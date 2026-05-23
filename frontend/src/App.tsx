@@ -17,7 +17,8 @@ import {
   X,
   Bell,
   RefreshCw,
-  Eye
+  Eye,
+  Cloud
 } from 'lucide-react';
 import { calculateNextSRS, SRSRating } from 'shared-learning-logic';
 import { 
@@ -43,6 +44,8 @@ interface Word {
   examples?: any[];
   srsLevel: number;
   nextReviewAt: number;
+  wordAudioUrl?: string;
+  wordTeacherAudioUrl?: string;
 }
 
 interface Config {
@@ -217,10 +220,22 @@ function App() {
     }
   };
 
-  const playTTS = (e: React.MouseEvent | null, text: string) => {
+  const playTTS = (e: React.MouseEvent | null, text: string, audioUrl?: string) => {
     if (e) {
       e.stopPropagation(); // Stop flip trigger
     }
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play().catch(err => {
+        console.error("Failed to play cached cloud audio, falling back to browser speech:", err);
+        playBrowserTTS(text);
+      });
+    } else {
+      playBrowserTTS(text);
+    }
+  };
+
+  const playBrowserTTS = (text: string) => {
     if ('speechSynthesis' in window) {
       const isCurrentlySpeaking = window.speechSynthesis.speaking;
       if (isCurrentlySpeaking) {
@@ -500,15 +515,25 @@ function App() {
                             <h2 className="text-3xl font-extrabold tracking-tight text-slate-100 select-text">
                               {activeCard.dutch}
                             </h2>
-                            <button 
-                              onClick={(e) => {
-                                playTTS(e, activeCard.dutch);
-                              }}
-                              className="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 rounded-full transition-all duration-150 cursor-pointer border border-sky-500/10 active:scale-95"
-                              title="Play Pronunciation"
-                            >
-                              <Volume2 className="w-4 h-4" />
-                            </button>
+                            <div className="relative">
+                              <button 
+                                onClick={(e) => {
+                                  playTTS(e, activeCard.dutch, activeCard.wordAudioUrl);
+                                }}
+                                className="p-3 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 rounded-full transition-all duration-150 cursor-pointer border border-sky-500/10 active:scale-95 shadow-lg shadow-sky-500/5 hover:shadow-sky-500/10"
+                                title={activeCard.wordAudioUrl ? "Play Premium Cloud Pronunciation" : "Play Pronunciation"}
+                              >
+                                <Volume2 className="w-5 h-5" />
+                              </button>
+                              {activeCard.wordAudioUrl && (
+                                <span 
+                                  className="absolute -top-1 -right-1 flex h-4.5 w-4.5 pointer-events-none items-center justify-center bg-[#0b0f19] rounded-full border border-sky-500/30 text-sky-400 p-0.5 animate-pulse"
+                                  title="Audio saved in the cloud"
+                                >
+                                  <Cloud className="w-2.5 h-2.5" />
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Flip Call-to-action */}
