@@ -1,0 +1,5 @@
+/* Clear standard skeleton styles to avoid styling conflicts with custom Tailwind styles */
+#app {
+  width: 100%;
+  height: 100%;
+}
