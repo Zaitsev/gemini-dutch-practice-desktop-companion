@@ -17,7 +17,8 @@ import {
   X,
   Bell,
   RefreshCw,
-  Eye
+  Eye,
+  SkipForward
 } from 'lucide-react';
 import { calculateNextSRS, SRSRating } from 'shared-learning-logic';
 import { 
@@ -249,6 +250,21 @@ function App() {
   const activeCards = practiceAll ? flashcards : dueCards;
   const activeCard = activeCards[currentCardIndex] || null;
 
+  const handleSkipWord = () => {
+    if (!activeCard) return;
+
+    setIsFlipped(false);
+    setTimeout(() => {
+      if (currentCardIndex + 1 >= activeCards.length) {
+        showToast("Review session completed.", "success");
+        setTimeout(() => {
+          HideWindow();
+        }, 3000);
+      }
+      setCurrentCardIndex(prev => prev + 1);
+    }, 200);
+  };
+
   const handleGradeWord = async (rating: SRSRating) => {
     if (!activeCard || savingSrs) return;
     setSavingSrs(true);
@@ -469,12 +485,23 @@ function App() {
                   <div className="flex-1 flex flex-col justify-between">
                     {/* Progress Indicator */}
                     <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 px-1 mb-2">
-                      <span className="bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/30">
-                        {practiceAll ? 'Practice stack' : 'Due stack'}
-                      </span>
-                      <span>
-                        Card {currentCardIndex + 1} of {activeCards.length}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/30">
+                          {practiceAll ? 'Practice stack' : 'Due stack'}
+                        </span>
+                        <span className="text-slate-500">
+                          Card {currentCardIndex + 1} of {activeCards.length}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={handleSkipWord}
+                        className="flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200 font-bold rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
+                        title="Skip this word"
+                      >
+                        <span>Skip</span>
+                        <SkipForward className="w-3.5 h-3.5 text-indigo-400" />
+                      </button>
                     </div>
 
                     {/* Slick 3D perspective wrapper with key for mounting animations */}
