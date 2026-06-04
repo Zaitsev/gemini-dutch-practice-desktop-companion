@@ -29,9 +29,9 @@ func main() {
 
 	// Create application with custom options
 	err := wails.Run(&options.App{
-		Title:             "TaalGem Companion",
+		Title:             "TaalGem-companion",
 		Width:             380,
-		Height:            440,
+		Height:            540,
 		StartHidden:       true, // Runs completely minimized to tray on start!
 		MinWidth:          320,
 		MinHeight:         400,
@@ -56,8 +56,7 @@ func main() {
 				systray.SetTooltip("TaalGem.NL Companion")
 
 				systray.SetOnClick(func(menu systray.IMenu) {
-					runtime.WindowShow(app.ctx)
-					runtime.WindowSetAlwaysOnTop(app.ctx, true)
+					app.ShowWindow()
 				})
 
 				mShow := systray.AddMenuItem("Show Companion", "Show the main window")
@@ -66,12 +65,11 @@ func main() {
 				mExit := systray.AddMenuItem("Exit", "Exit application")
 
 				mShow.Click(func() {
-					runtime.WindowShow(app.ctx)
-					runtime.WindowSetAlwaysOnTop(app.ctx, true)
+					app.ShowWindow()
 				})
 
 				mCheck.Click(func() {
-					app.TriggerPopupCheck()
+					go app.ResetReviewTimer()
 				})
 
 				mExit.Click(func() {
@@ -84,6 +82,8 @@ func main() {
 			})
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
+			// Always save window state before hiding or exiting
+			app.SaveWindowState()
 			// If exit menu triggered, close completely
 			if shouldExit {
 				return false

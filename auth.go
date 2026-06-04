@@ -12,12 +12,13 @@ import (
 )
 
 type AuthResult struct {
-	IdToken     string `json:"idToken"`
-	Uid         string `json:"uid"`
-	DisplayName string `json:"displayName"`
-	Email       string `json:"email"`
-	PhotoURL    string `json:"photoURL"`
-	Error       string `json:"error"`
+	IdToken      string `json:"idToken"`
+	RefreshToken string `json:"refreshToken"`
+	Uid          string `json:"uid"`
+	DisplayName  string `json:"displayName"`
+	Email        string `json:"email"`
+	PhotoURL     string `json:"photoURL"`
+	Error        string `json:"error"`
 }
 
 var (
@@ -71,11 +72,12 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 		}
 
 		res := AuthResult{
-			IdToken:     r.FormValue("idToken"),
-			Uid:         r.FormValue("uid"),
-			DisplayName: r.FormValue("displayName"),
-			Email:       r.FormValue("email"),
-			PhotoURL:    r.FormValue("photoURL"),
+			IdToken:      r.FormValue("idToken"),
+			RefreshToken: r.FormValue("refreshToken"),
+			Uid:          r.FormValue("uid"),
+			DisplayName:  r.FormValue("displayName"),
+			Email:        r.FormValue("email"),
+			PhotoURL:     r.FormValue("photoURL"),
 		}
 
 		if res.IdToken == "" || res.Uid == "" {
@@ -319,6 +321,7 @@ const loginHTMLTemplate = `<!DOCTYPE html>
                 // Redirect back to our callback endpoint
                 const url = new URL('/callback', window.location.origin);
                 url.searchParams.append('idToken', idToken);
+                url.searchParams.append('refreshToken', user.refreshToken || user.stsTokenManager?.refreshToken || '');
                 url.searchParams.append('uid', user.uid);
                 url.searchParams.append('displayName', user.displayName || '');
                 url.searchParams.append('email', user.email || '');

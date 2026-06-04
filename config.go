@@ -8,13 +8,21 @@ import (
 )
 
 type Config struct {
-	IntervalMinutes int    `json:"intervalMinutes"`
-	IdToken         string `json:"idToken"`
-	Uid             string `json:"uid"`
-	DisplayName     string `json:"displayName"`
-	Email           string `json:"email"`
-	PhotoURL        string `json:"photoURL"`
-	UseEmulator     bool   `json:"useEmulator"`
+	IntervalMinutes    int    `json:"intervalMinutes"`
+	IdToken            string `json:"idToken"`
+	RefreshToken       string `json:"refreshToken"`
+	Uid                string `json:"uid"`
+	DisplayName        string `json:"displayName"`
+	Email              string `json:"email"`
+	PhotoURL           string `json:"photoURL"`
+	UseEmulator        bool   `json:"useEmulator"`
+	WindowX            int    `json:"windowX"`
+	WindowY            int    `json:"windowY"`
+	WindowW            int    `json:"windowW"`
+	WindowH            int    `json:"windowH"`
+	WindowPositionSaved bool  `json:"windowPositionSaved"`
+	DndEndTimestamp    int64  `json:"dndEndTimestamp"`
+	DndDurationMinutes int    `json:"dndDurationMinutes"`
 }
 
 const configDirName = "taalgem-companion"
