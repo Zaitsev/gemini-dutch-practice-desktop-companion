@@ -16,6 +16,8 @@ export namespace main {
 	    windowPositionSaved: boolean;
 	    dndEndTimestamp: number;
 	    dndDurationMinutes: number;
+	    autoHideOnAnswer: boolean;
+	    challengeMode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -38,6 +40,8 @@ export namespace main {
 	        this.windowPositionSaved = source["windowPositionSaved"];
 	        this.dndEndTimestamp = source["dndEndTimestamp"];
 	        this.dndDurationMinutes = source["dndDurationMinutes"];
+	        this.autoHideOnAnswer = source["autoHideOnAnswer"];
+	        this.challengeMode = source["challengeMode"];
 	    }
 	}
 	export class DndStatus {

@@ -10,6 +10,10 @@ export function FetchFlashcards() {
   return window['go']['main']['App']['FetchFlashcards']();
 }
 
+export function ForseRefreshWords() {
+  return window['go']['main']['App']['ForseRefreshWords']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
@@ -38,6 +42,10 @@ export function ResetReviewTimer() {
   return window['go']['main']['App']['ResetReviewTimer']();
 }
 
+export function SaveAutoHideOnAnswer(arg1) {
+  return window['go']['main']['App']['SaveAutoHideOnAnswer'](arg1);
+}
+
 export function SaveInterval(arg1) {
   return window['go']['main']['App']['SaveInterval'](arg1);
 }
@@ -50,8 +58,12 @@ export function SetDndMinutes(arg1) {
   return window['go']['main']['App']['SetDndMinutes'](arg1);
 }
 
-export function ShowBottomRightPopup() {
-  return window['go']['main']['App']['ShowBottomRightPopup']();
+export function SetMChallengeMode(arg1) {
+  return window['go']['main']['App']['SetMChallengeMode'](arg1);
+}
+
+export function ShowAppCardWindow() {
+  return window['go']['main']['App']['ShowAppCardWindow']();
 }
 
 export function ShowWindow() {

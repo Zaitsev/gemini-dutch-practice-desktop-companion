@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -71,13 +73,19 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 			return
 		}
 
+		photoURL := r.FormValue("photoURL")
+		// Download and cache profile image as base64 to avoid WebView2 tracking prevention
+		if photoURL != "" {
+			photoURL = downloadAndEncodeImage(photoURL)
+		}
+
 		res := AuthResult{
 			IdToken:      r.FormValue("idToken"),
 			RefreshToken: r.FormValue("refreshToken"),
 			Uid:          r.FormValue("uid"),
 			DisplayName:  r.FormValue("displayName"),
 			Email:        r.FormValue("email"),
-			PhotoURL:     r.FormValue("photoURL"),
+			PhotoURL:     photoURL,
 		}
 
 		if res.IdToken == "" || res.Uid == "" {
@@ -133,6 +141,50 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 	StopAuthServer()
 
 	return finalResult, nil
+}
+
+// downloadAndEncodeImage downloads a remote image and returns it as a base64 data URL
+func downloadAndEncodeImage(photoURL string) string {
+	if photoURL == "" {
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", photoURL, nil)
+	if err != nil {
+		fmt.Printf("[Auth] Error creating image request: %v\n", err)
+		return photoURL // Return original URL as fallback
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Printf("[Auth] Error downloading image: %v\n", err)
+		return photoURL // Return original URL as fallback
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("[Auth] Image download returned status %d\n", resp.StatusCode)
+		return photoURL // Return original URL as fallback
+	}
+
+	imageData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("[Auth] Error reading image: %v\n", err)
+		return photoURL // Return original URL as fallback
+	}
+
+	// Determine image type from Content-Type header
+	imageType := "image/jpeg"
+	if ct := resp.Header.Get("Content-Type"); ct != "" {
+		imageType = ct
+	}
+
+	// Encode to base64 and return as data URL
+	b64 := base64.StdEncoding.EncodeToString(imageData)
+	return fmt.Sprintf("data:%s;base64,%s", imageType, b64)
 }
 
 // StopAuthServer stops the listener

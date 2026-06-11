@@ -9,5 +9,8 @@
   "author": {
     "name": "vladzaitsev",
     "email": "vladzaitsev@gmail.com"
+  },
+  "windows": {
+    "executionLevel": "asInvoker"
   }
 }

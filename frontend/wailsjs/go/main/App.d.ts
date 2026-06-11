@@ -6,6 +6,8 @@ export function ClearDnd():Promise<boolean>;
 
 export function FetchFlashcards():Promise<Array<main.Word>>;
 
+export function ForseRefreshWords():Promise<void>;
+
 export function GetConfig():Promise<main.Config>;
 
 export function GetDndStatus():Promise<main.DndStatus>;
@@ -20,13 +22,17 @@ export function Logout():Promise<boolean>;
 
 export function ResetReviewTimer():Promise<void>;
 
+export function SaveAutoHideOnAnswer(arg1:boolean):Promise<boolean>;
+
 export function SaveInterval(arg1:number):Promise<boolean>;
 
 export function SaveWindowState():Promise<void>;
 
 export function SetDndMinutes(arg1:number):Promise<boolean>;
 
-export function ShowBottomRightPopup():Promise<void>;
+export function SetMChallengeMode(arg1:string):Promise<boolean>;
+
+export function ShowAppCardWindow():Promise<void>;
 
 export function ShowWindow():Promise<void>;
 

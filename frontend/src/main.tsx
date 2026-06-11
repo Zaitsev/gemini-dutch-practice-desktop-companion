@@ -6,12 +6,14 @@ import { AppStateProvider } from './provider'
 
 const container = document.getElementById('root')
 
+container!.style.height = "100dvh";
+container!.style.width = "100dvw";
 const root = createRoot(container!)
 
 root.render(
-    <React.StrictMode>
+    // <React.StrictMode>
         <AppStateProvider>
             <App />
         </AppStateProvider>
-    </React.StrictMode>
+    // </React.StrictMode>
 )

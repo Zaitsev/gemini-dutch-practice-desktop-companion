@@ -7,6 +7,7 @@ import (
 
 	"github.com/energye/systray"
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger" // Ensure you import the logger package
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -29,6 +30,8 @@ func main() {
 
 	// Create application with custom options
 	err := wails.Run(&options.App{
+		// Force production mode to output all logs
+		LogLevelProduction: logger.DEBUG, 
 		Title:             "TaalGem-companion",
 		Width:             380,
 		Height:            540,
@@ -42,6 +45,7 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour:  &options.RGBA{R: 15, G: 23, B: 42, A: 1}, // Matches Slate-900 theme
+	
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
 
@@ -90,6 +94,7 @@ func main() {
 			}
 			// Otherwise, clicking standard close action hides back to tray!
 			runtime.WindowHide(ctx)
+			app.isWindowOpen = false
 			return true
 		},
 		Bind: []interface{}{

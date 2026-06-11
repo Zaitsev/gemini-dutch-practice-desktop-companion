@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
+    ForseRefreshWords,
     GetWords,
     TriggerPopupCheck
 } from "../wailsjs/go/main/App";
+import type { ChallengeMode, Config } from "./const";
 const appStateContext = createContext<AppState | null>(null);
 const CURRENT_CARD_INDEX_STORAGE_KEY = "desktopCompanion.currentCardIndex";
 export interface Word {
@@ -19,16 +21,7 @@ export interface Word {
     wordTeacherAudioUrl?: string;
 }
 
-export interface Config {
-    intervalMinutes: number;
-    idToken: string;
-    refreshToken: string;
-    uid: string;
-    displayName: string;
-    email: string;
-    photoURL: string;
-    useEmulator: boolean;
-}
+
 type AppState = ReturnType<typeof useAppState>;
 const useAppState = () => {
 
@@ -67,7 +60,7 @@ const useAppState = () => {
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [practiceAll, setPracticeAll] = useState(false); // Practice all words if none are due
 
-  
+
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -77,14 +70,16 @@ const useAppState = () => {
     };
 
 
-    const loadCards = useCallback(async (currentConfig: Config) => {
+    const loadCards = useCallback(async (currentConfig: Config, forse = false) => {
+        console.log("Loading cards ");
         if (!currentConfig) {
             setFlashcards([]);
             return;
         }
-        if (flashcards.length > 0) {
+        if (!forse && flashcards.length > 0) {
+            console.log("Cards already loaded, skipping fetch.");
             setLoading(false);
-            if (flashcards.length  < currentCardIndex   ) {
+            if (flashcards.length < currentCardIndex) {
                 setCurrentCardIndex(0);
             }
             return;
@@ -92,8 +87,12 @@ const useAppState = () => {
 
         setLoading(true);
         try {
-            const cards = await GetWords();
-            setFlashcards(cards || []);
+            const all_cards = await GetWords();
+            const cards = all_cards.sort(() => Math.random() - 0.5); // Shuffle cards randomly
+            console.log(`Fetched ${cards.length} cards from backend.`);
+            const dev_cards = cards;// cards.slice(0, 15); // For debugging purposes
+            console.warn(`Using ${dev_cards.length} cards for development.`);
+            setFlashcards(dev_cards || []);
         } catch (err) {
             console.error("Failed to load flashcards:", err);
             const errMsg = err instanceof Error ? err.message : String(err);
@@ -105,11 +104,13 @@ const useAppState = () => {
     const handleTriggerManualCheck = useCallback(async () => {
         setLoading(true);
         try {
+            await ForseRefreshWords(); // Ensure we have the latest data before triggering the check
+            if (config) {
+                await loadCards(config, true);
+            }
             const dueCount = await TriggerPopupCheck();
             showToast(`Review check done. Found ${dueCount} cards due.`, "success");
-            if (config) {
-                await loadCards(config);
-            }
+
         } catch (err) {
             console.error("Error running review check:", err);
             showToast("Error performing manual review check.", "error");

@@ -1,10 +1,34 @@
-import { Bell, Clock, LogOut, RotateCw, User } from 'lucide-react';
+import { Bell, Clock, IdCardIcon, LogOut, RotateCw, User } from 'lucide-react';
 import { useCallback } from 'react';
 import {
     Logout,
-    SaveInterval
+    SaveInterval,
+    SaveAutoHideOnAnswer,
 } from "../wailsjs/go/main/App";
 import { useAppStateContext } from './provider';
+import { popUpIntervals } from './const';
+
+
+const getProfileInitials = (displayName?: string, email?: string) => {
+    const source = displayName?.trim() || email?.trim() || '';
+    if (!source) {
+        return 'TG';
+    }
+
+    const words = source
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+
+    if (words.length === 0) {
+        return 'TG';
+    }
+
+    return words
+        .map((word) => word[0]?.toUpperCase() || '')
+        .join('')
+        .slice(0, 2);
+};
 
 
 
@@ -39,6 +63,8 @@ export function SettingsPage() {
         }
     }, [setConfig, showToast]);
 
+    const profileInitials = getProfileInitials(config?.displayName, config?.email);
+
 
     return (
         <div className="flex-1 flex flex-col justify-between animate-slide-up-fade">
@@ -47,10 +73,14 @@ export function SettingsPage() {
                 {config && (
                     <div className="p-3 rounded-xl bg-slate-900/35 border border-slate-800/30 flex items-center gap-3">
                         {config.photoURL ? (
-                            <img src={config.photoURL} alt="Profile" className="w-10 h-10 rounded-full border border-slate-700/50 shadow" referrerPolicy="no-referrer" />
+                            <img src={config.photoURL} alt="Profile" className="w-10 h-10 rounded-full border border-slate-700/50 shadow" />
                         ) : (
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700/50">
-                                <User className="w-5 h-5" />
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-200 border border-slate-700/50 shadow overflow-hidden">
+                                {profileInitials ? (
+                                    <span className="text-xs font-bold tracking-wide">{profileInitials}</span>
+                                ) : (
+                                    <User className="w-5 h-5 text-slate-400" />
+                                )}
                             </div>
                         )}
                         <div className="min-w-0">
@@ -59,7 +89,34 @@ export function SettingsPage() {
                         </div>
                     </div>
                 )}
+                {/* Challenge Mode */}
+                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-200">
+                        <IdCardIcon className="w-4 h-4 text-sky-400" />
+                        <h3 className="text-xs font-bold">Cards Mode</h3>
+                        {["normal", "reverse", "mixed"].map(mode => {
+                            const active = config?.challengeMode || 'normal';
+                            return (
 
+                                <button key={mode}
+                                    onClick={() => {
+                                        setConfig(prev => prev ? { ...prev, challengeMode: mode as any } : null);
+                                    }}
+                                    className={`py-1 px-2 rounded-lg font-bold text-xs border transition-all cursor-pointer ${active === mode
+                                        ? 'bg-sky-500/10 border-sky-400 text-sky-400'
+                                        : 'bg-slate-900/30 border-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                                        }`}
+                                >
+                                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                </button>
+                            )
+                        })}
+                    </div>
+                    
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                        Cards mode: normal : Dutch &rarr;Translation, reverse : Translation &rarr; Dutch, mixed : Random variant for each card.
+                    </p>
+                </div>
                 {/* Timing presets dropdown section */}
                 <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
                     <div className="flex items-center gap-2 text-slate-200">
@@ -72,7 +129,7 @@ export function SettingsPage() {
                     </p>
 
                     <div className="grid grid-cols-4 gap-2 pt-1">
-                        {[15, 30, 60, 120].map((mins) => {
+                        {popUpIntervals.map((mins) => {
                             const active = config?.intervalMinutes === mins;
                             return (
                                 <button
@@ -89,7 +146,33 @@ export function SettingsPage() {
                         })}
                     </div>
                 </div>
+                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-200">
+                        <h3 className="text-xs font-bold">Auto-Hide on Answer</h3>
+                        <input type="checkbox" checked={config?.autoHideOnAnswer || false} onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            try {
+                                const success = await SaveAutoHideOnAnswer(newValue);
+                                if (success) {
+                                    setConfig(prev => prev ? { ...prev, autoHideOnAnswer: newValue } : null);
+                                } else {
+                                    showToast("Failed to update Auto-Hide setting.", "error");
+                                }
+                            } catch (err) {
+                                console.error("Error updating Auto-Hide setting:", err);
+                                showToast("Error updating Auto-Hide setting.", "error");
+                            }
+                        }} className="w-4 h-4 rounded border-slate-700/50 text-sky-400 focus:ring-sky-400/30" />
 
+
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                        Automatically hide window on answer.
+                    </p>
+
+
+
+                </div>
                 {/* Manual trigger checklist operations */}
                 <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
                     <div className="flex items-center gap-2 text-slate-200">

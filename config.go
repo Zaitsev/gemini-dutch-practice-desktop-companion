@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -23,6 +22,8 @@ type Config struct {
 	WindowPositionSaved bool  `json:"windowPositionSaved"`
 	DndEndTimestamp    int64  `json:"dndEndTimestamp"`
 	DndDurationMinutes int    `json:"dndDurationMinutes"`
+	AutoHideOnAnswer   bool    `json:"autoHideOnAnswer"`
+	ChallengeMode				string  `json:"challengeMode"` // "normal", "reverse", "mixed"
 }
 
 const configDirName = "taalgem-companion"
@@ -55,16 +56,22 @@ func LoadConfig() (*Config, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return &Config{
 			IntervalMinutes: 60,
+			ChallengeMode:      "normal", // Default value for new setting
+			AutoHideOnAnswer: 	true, // Default value for new setting
 			UseEmulator:     false,
 		}, nil
 	}
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var config Config
+	config := Config{
+		IntervalMinutes:    60,   // Default to 60 minutes if not set
+		ChallengeMode:      "normal", // Default value for new setting
+		AutoHideOnAnswer: 	true, // Default value for new setting
+	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
@@ -89,5 +96,5 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	return ioutil.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0644)
 }

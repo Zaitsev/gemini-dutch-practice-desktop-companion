@@ -471,7 +471,7 @@ func (fc *FirestoreClient) GetWordsByIds(wordIds []string) ([]Word, error) {
 	}
 
 	var allWords []Word
-	const chunkSize = 100
+	const chunkSize = 500
 
 	for i := 0; i < len(wordIds); i += chunkSize {
 		end := i + chunkSize
@@ -565,6 +565,9 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 									},
 									"nextReviewAt": map[string]interface{}{
 										"integerValue": strconv.FormatInt(nextReviewAt, 10),
+									},
+									"deckId": map[string]interface{}{
+										"integerValue": 0,
 									},
 								},
 							},

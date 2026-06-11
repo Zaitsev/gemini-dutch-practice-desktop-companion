@@ -19,6 +19,8 @@ type App struct {
 	timerLock   sync.Mutex
 	words       []Word
 	wordsLock   sync.Mutex
+	// Track the state manually when hiding/showing
+	isWindowOpen bool
 }
 
 type DndStatus struct {
@@ -93,6 +95,19 @@ func (a *App) SaveInterval(minutes int) bool {
 	return true
 }
 
+// SaveAutoHideOnAnswer updates and saves the autoHideOnAnswer setting
+func (a *App) SaveAutoHideOnAnswer(autoHide bool) bool {
+	a.configLock.Lock()
+	a.config.AutoHideOnAnswer = autoHide
+	if err := a.config.Save(); err != nil {
+		runtime.LogErrorf(a.ctx, "[Config] Error saving autoHideOnAnswer: %v", err)
+		a.configLock.Unlock()
+		return false
+	}
+	a.configLock.Unlock()
+	return true
+}
+
 // Login triggers the system browser loopback login
 func (a *App) Login() (*Config, error) {
 	a.configLock.Lock()
@@ -117,7 +132,7 @@ func (a *App) Login() (*Config, error) {
 	a.config.Email = res.Email
 	a.config.PhotoURL = res.PhotoURL
 	if err := a.config.Save(); err != nil {
-		fmt.Printf("[Config] Error saving login config: %v\n", err)
+		runtime.LogErrorf(a.ctx, "[Config] Error saving login config: %v", err)
 	}
 	currentConfig := a.config
 	a.configLock.Unlock()
@@ -141,7 +156,7 @@ func (a *App) Logout() bool {
 	a.config.Email = ""
 	a.config.PhotoURL = ""
 	if err := a.config.Save(); err != nil {
-		fmt.Printf("[Config] Error saving logout config: %v\n", err)
+		runtime.LogErrorf(a.ctx, "[Config] Error saving logout config: %v", err)
 	}
 	a.configLock.Unlock()
 
@@ -154,8 +169,20 @@ func (a *App) GetWords() []Word {
 	defer a.wordsLock.Unlock()
 	return a.words
 }
+// Forse re-fetch words from Firestore and update in-memory cache
+func (a *App) ForseRefreshWords() {
+	// Prime in-memory flashcard cache on startup when available.
+	if words, err := a.FetchFlashcards(); err != nil {
+		fmt.Printf("[Startup] Initial flashcard fetch skipped: %v\n", err)
+
+	} else {
+		a.setWords(words)
+	}
+}
+
 // FetchFlashcards fetches and merges word definitions with user dictionary SRS levels
 func (a *App) FetchFlashcards() ([]Word, error) {
+	runtime.LogInfo(a.ctx, "Fetching flashcards from Firestore...")
 	a.configLock.Lock()
 	uid := a.config.Uid
 	token := a.config.IdToken
@@ -208,7 +235,7 @@ func (a *App) FetchFlashcards() ([]Word, error) {
 			words[i].NextReviewAt = time.Now().UnixNano() / int64(time.Millisecond)
 		}
 	}
-	fmt.Printf("[GetFlashcards] fetched %d words\n", len(words))
+	runtime.LogInfof(a.ctx, "[GetFlashcards] fetched %d words", len(words))
 	return words, nil
 }
 
@@ -360,7 +387,8 @@ func (a *App) triggerPopupCheck(force bool) int {
 	}
 
 	if dueCount > 0 {
-		a.ShowBottomRightPopup()
+		fmt.Printf("[PopupCheck] %d cards are due. Triggering popup.\n", dueCount)
+		a.ShowAppCardWindow()
 	}
 
 	return dueCount
@@ -376,7 +404,7 @@ func (a *App) TriggerPopupCheck() int {
 func (a *App) SaveWindowState() {
 	x, y := runtime.WindowGetPosition(a.ctx)
 	w, h := runtime.WindowGetSize(a.ctx)
-
+	runtime.LogDebugf(a.ctx, "Saving window state: x=%d, y=%d, w=%d, h=%d", x, y, w, h)
 	a.configLock.Lock()
 	a.config.WindowX = x
 	a.config.WindowY = y
@@ -384,7 +412,7 @@ func (a *App) SaveWindowState() {
 	a.config.WindowH = h
 	a.config.WindowPositionSaved = true
 	if err := a.config.Save(); err != nil {
-		fmt.Printf("[Config] Error saving window state: %v\n", err)
+		runtime.LogErrorf(a.ctx, "[Config] Error saving window state: %v", err)
 	}
 	a.configLock.Unlock()
 }
@@ -456,29 +484,41 @@ func isPositionOnScreen(x, y, w int, screens []runtime.Screen) bool {
 	return x+minVisible <= totalW && x+w > 0 && y >= 0 && y+minVisible <= maxH
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+
+func (a *App) SetMChallengeMode(mode string) bool {
+	a.configLock.Lock()
+	//check mode in normal, reverse, mixed
+	if mode != "normal" && mode != "reverse" && mode != "mixed" {
+		fmt.Printf("[Config] Invalid challenge mode: %s\n", mode)
+		a.configLock.Unlock()
+		return false
 	}
-	return b
+	a.config.ChallengeMode = mode
+	if err := a.config.Save(); err != nil {
+		fmt.Printf("[Config] Error saving challenge mode: %v\n", err)
+		a.configLock.Unlock()
+		return false
+	}
+	a.configLock.Unlock()
+	return true
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
 
-// ShowBottomRightPopup slides the window up in the bottom-right corner above the taskbar
-func (a *App) ShowBottomRightPopup() {
+// ShowAppCardWindow slides the window up from the system tray and brings it to the front, 
+// then triggers a flashcard review data refresh in the frontend.
+func (a *App) ShowAppCardWindow() {
 	// Standard compact card popup window sizes
+	if  a.isWindowOpen {
+		fmt.Printf("[ShowWindow] Window is shown,do nothing.\n")
+		return
+	}
 	const winWidth = 380
 	const winHeight = 540
 
 	a.restoreOrDefaultPosition(winWidth, winHeight)
 
 	runtime.WindowShow(a.ctx)
+	a.isWindowOpen = true
 	runtime.WindowSetAlwaysOnTop(a.ctx, true)
 	runtime.EventsEmit(a.ctx, "trigger_flashcard_review", nil)
 }
@@ -546,15 +586,15 @@ func (a *App) ResetReviewTimer() {
 	if intervalMins <= 0 {
 		intervalMins = 60
 	}
-	// coarseSyncDuration := time.Duration(intervalMins) * time.Minute
-	coarseSyncDuration := time.Duration(intervalMins) * time.Second // For testing, use seconds instead of minutes
+	coarseSyncDuration := time.Duration(intervalMins) * time.Minute
+	// coarseSyncDuration := time.Duration(intervalMins) * time.Second // For testing, use seconds instead of minutes
 
 	// Case 1: Cards are already due right now
 	if dueCount > 0 {
 		if dndStatus.Active {
 			fmt.Printf("[Timer] %d cards are due but DND is active for %s. Auto-popup suppressed.\n", dueCount, time.Duration(dndStatus.RemainingMs)*time.Millisecond)
 		} else {
-			fmt.Printf("[Timer] %d cards are already due. Triggering popup.\n", dueCount)
+			fmt.Printf("[Timer] %d cards are already due. Checking triggering popup.\n", dueCount)
 			go a.triggerPopupCheck(false)
 		}
 
@@ -673,12 +713,14 @@ func (a *App) startBackgroundChecker() {
 func (a *App) HideWindow() {
 	a.SaveWindowState()
 	runtime.WindowHide(a.ctx)
+	a.isWindowOpen = false
 }
 
 // ShowWindow restores and brings the window to the front, and refreshes cards
 func (a *App) ShowWindow() {
 	a.restoreOrDefaultPosition(380, 540)
 	runtime.WindowShow(a.ctx)
+	a.isWindowOpen = true
 	runtime.WindowSetAlwaysOnTop(a.ctx, true)
 	
 	// Refresh the frontend data

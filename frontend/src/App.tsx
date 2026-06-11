@@ -47,9 +47,9 @@ const EMPTY_DND_STATUS: DndStatus = {
 };
 
 function App() {
-  const { config, setConfig, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
+  const { setConfig, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
   const { loadCards } = useAppStateContext();
-  const { authLoading, setAuthLoading, flashcards, setFlashcards, activeTab, setActiveTab, currentCardIndex, setCurrentCardIndex, isFlipped, setIsFlipped, savingSrs, setSavingSrs } = useAppStateContext();
+  const { flashcards, setFlashcards, activeTab, setActiveTab, currentCardIndex, setCurrentCardIndex, setIsFlipped } = useAppStateContext();
   const { practiceAll, setPracticeAll } = useAppStateContext(); // Practice all words if none are due
   const resizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dndStatus, setDndStatus] = useState<DndStatus>(EMPTY_DND_STATUS);
@@ -173,11 +173,11 @@ function App() {
     };
   }, []);
 
-  const handleAuthStateChanged = (newConfig: any) => {
+  const handleAuthStateChanged = async(newConfig: any) => {
     if (newConfig && newConfig.uid && newConfig.idToken) {
       setConfig(newConfig);
       setIsLoggedIn(true);
-      loadCards(newConfig);
+      await loadCards(newConfig);
     } else {
       setConfig(newConfig || null);
       setIsLoggedIn(false);
@@ -278,7 +278,6 @@ function App() {
   const nowMs = Date.now();
   const dueCards = flashcards.filter(c => c.nextReviewAt <= nowMs);
   const activeCards = practiceAll ? flashcards : dueCards;
-  const activeCard = activeCards[currentCardIndex] || null;
 
 
 
