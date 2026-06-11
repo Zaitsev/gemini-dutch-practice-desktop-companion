@@ -2,6 +2,7 @@ import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
+import { WordDeckAssignments } from "./WordDeckAssignments";
 /** ReverseCard component displays a single word card English->Dutch */
 export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
@@ -47,6 +48,7 @@ export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                         {activeCard.english}
                     </h2>
                     <Examples activeCard={activeCard} />
+                    <WordDeckAssignments activeCard={activeCard} />
                 </div>
 
                 {/* Flipback hint */}

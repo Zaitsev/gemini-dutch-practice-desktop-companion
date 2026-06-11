@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
     ForseRefreshWords,
-    GetWords,
+    GetWordsAndDecks,
     TriggerPopupCheck
 } from "../wailsjs/go/main/App";
 import type { ChallengeMode, Config } from "./const";
 const appStateContext = createContext<AppState | null>(null);
 const CURRENT_CARD_INDEX_STORAGE_KEY = "desktopCompanion.currentCardIndex";
+export interface Deck {
+    id: string;
+    name: string;
+}
 export interface Word {
     id: string;
     dutch: string;
@@ -17,6 +21,7 @@ export interface Word {
     examples?: any[];
     srsLevel: number;
     nextReviewAt: number;
+    deckIds?: string[];
     wordAudioUrl?: string;
     wordTeacherAudioUrl?: string;
 }
@@ -30,6 +35,7 @@ const useAppState = () => {
     const [loading, setLoading] = useState(true);
     const [authLoading, setAuthLoading] = useState(false);
     const [flashcards, setFlashcards] = useState<Word[]>([]);
+    const [decks, setDecks] = useState<Deck[]>([]);
     const [activeTab, setActiveTab] = useState<'reviews' | 'settings'>('reviews');
     const [currentCardIndex, setCurrentCardIndex_] = useState(() => {
         console.log("Initializing currentCardIndex from localStorage...");
@@ -87,12 +93,11 @@ const useAppState = () => {
 
         setLoading(true);
         try {
-            const all_cards = await GetWords();
-            const cards = all_cards.sort(() => Math.random() - 0.5); // Shuffle cards randomly
+            const result = await GetWordsAndDecks();
+            const cards = (result?.words || []).sort(() => Math.random() - 0.5);
             console.log(`Fetched ${cards.length} cards from backend.`);
-            const dev_cards = cards;// cards.slice(0, 15); // For debugging purposes
-            console.warn(`Using ${dev_cards.length} cards for development.`);
-            setFlashcards(dev_cards || []);
+            setFlashcards(cards);
+            setDecks(result?.decks || []);
         } catch (err) {
             console.error("Failed to load flashcards:", err);
             const errMsg = err instanceof Error ? err.message : String(err);
@@ -129,6 +134,8 @@ const useAppState = () => {
         setAuthLoading,
         flashcards,
         setFlashcards,
+        decks,
+        setDecks,
         activeTab,
         setActiveTab,
         currentCardIndex,

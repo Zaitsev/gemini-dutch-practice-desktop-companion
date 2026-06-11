@@ -1,12 +1,18 @@
 import { Bell, Clock, IdCardIcon, LogOut, RotateCw, User } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    CreateDeck,
+    DeleteDeck,
     Logout,
+    RenameDeck,
     SaveInterval,
     SaveAutoHideOnAnswer,
 } from "../wailsjs/go/main/App";
 import { useAppStateContext } from './provider';
 import { popUpIntervals } from './const';
+
+const DEFAULT_DECK_ID = "default";
+const DEFAULT_DECK_LABEL = "Default";
 
 
 const getProfileInitials = (displayName?: string, email?: string) => {
@@ -33,7 +39,23 @@ const getProfileInitials = (displayName?: string, email?: string) => {
 
 
 export function SettingsPage() {
-    const { config, setConfig, setFlashcards, setIsLoggedIn, showToast, handleTriggerManualCheck } = useAppStateContext();
+    const { config, setConfig, setFlashcards, setIsLoggedIn, showToast, handleTriggerManualCheck, decks, loadCards } = useAppStateContext();
+    const [newDeckName, setNewDeckName] = useState("");
+    const [deckNameDrafts, setDeckNameDrafts] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        setDeckNameDrafts((current) => {
+            const nextDrafts: Record<string, string> = {};
+            for (const deck of decks) {
+                if (deck.id === DEFAULT_DECK_ID) {
+                    continue;
+                }
+                nextDrafts[deck.id] = current[deck.id] ?? deck.name;
+            }
+            return nextDrafts;
+        });
+    }, [decks]);
+
     const handleSignOut = useCallback(async () => {
         try {
             const success = await Logout();
@@ -63,7 +85,77 @@ export function SettingsPage() {
         }
     }, [setConfig, showToast]);
 
+    const refreshDecksAndCards = useCallback(async () => {
+        if (!config) {
+            return;
+        }
+        await loadCards(config, true);
+    }, [config, loadCards]);
+
+    const handleCreateDeck = useCallback(async () => {
+        const trimmedName = newDeckName.trim();
+        if (!trimmedName) {
+            showToast("Deck name cannot be empty.", "error");
+            return;
+        }
+
+        try {
+            const success = await CreateDeck(trimmedName);
+            if (!success) {
+                showToast("Failed to create deck.", "error");
+                return;
+            }
+            setNewDeckName("");
+            await refreshDecksAndCards();
+            showToast(`Created deck ${trimmedName}.`, "success");
+        } catch (error) {
+            console.error("Error creating deck:", error);
+            showToast(error instanceof Error ? error.message : "Error creating deck.", "error");
+        }
+    }, [newDeckName, refreshDecksAndCards, showToast]);
+
+    const handleRenameDeck = useCallback(async (deckId: string) => {
+        const nextName = deckNameDrafts[deckId]?.trim();
+        if (!nextName) {
+            showToast("Deck name cannot be empty.", "error");
+            return;
+        }
+
+        try {
+            const success = await RenameDeck(deckId, nextName);
+            if (!success) {
+                showToast("Failed to rename deck.", "error");
+                return;
+            }
+            await refreshDecksAndCards();
+            showToast(`Renamed deck to ${nextName}.`, "success");
+        } catch (error) {
+            console.error("Error renaming deck:", error);
+            showToast(error instanceof Error ? error.message : "Error renaming deck.", "error");
+        }
+    }, [deckNameDrafts, refreshDecksAndCards, showToast]);
+
+    const handleDeleteDeck = useCallback(async (deckId: string, deckName: string) => {
+        if (!window.confirm(`Delete ${deckName}? Words in this deck will move back to default.`)) {
+            return;
+        }
+
+        try {
+            const success = await DeleteDeck(deckId);
+            if (!success) {
+                showToast("Failed to delete deck.", "error");
+                return;
+            }
+            await refreshDecksAndCards();
+            showToast(`Deleted ${deckName}.`, "success");
+        } catch (error) {
+            console.error("Error deleting deck:", error);
+            showToast(error instanceof Error ? error.message : "Error deleting deck.", "error");
+        }
+    }, [refreshDecksAndCards, showToast]);
+
     const profileInitials = getProfileInitials(config?.displayName, config?.email);
+    const customDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID);
 
 
     return (
@@ -89,6 +181,66 @@ export function SettingsPage() {
                         </div>
                     </div>
                 )}
+                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-200">
+                        <h3 className="text-xs font-bold">Decks</h3>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                        The default deck is protected. Create, rename, and delete custom decks here.
+                    </p>
+
+                    <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                            <input
+                                value={newDeckName}
+                                onChange={(event) => setNewDeckName(event.target.value)}
+                                placeholder="New deck name"
+                                className="flex-1 min-w-0 rounded-lg bg-slate-950/40 border border-slate-800/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 outline-none focus:border-sky-400/60"
+                            />
+                            <button
+                                onClick={handleCreateDeck}
+                                className="shrink-0 px-3 py-2 rounded-lg bg-sky-500/10 border border-sky-400/40 text-sky-300 text-xs font-bold hover:bg-sky-500/20 transition-colors cursor-pointer"
+                            >
+                                Create
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between rounded-lg border border-slate-800/50 bg-slate-950/35 px-3 py-2">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-100">{DEFAULT_DECK_LABEL}</p>
+                                    <p className="text-[10px] text-slate-500">Always available and cannot be removed.</p>
+                                </div>
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Locked</span>
+                            </div>
+
+                            {customDecks.map((deck) => (
+                                <div key={deck.id} className="rounded-lg border border-slate-800/50 bg-slate-950/35 px-3 py-2 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            value={deckNameDrafts[deck.id] ?? deck.name}
+                                            onChange={(event) => setDeckNameDrafts((current) => ({ ...current, [deck.id]: event.target.value }))}
+                                            className="flex-1 min-w-0 rounded-lg bg-slate-900/60 border border-slate-800/60 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-600 outline-none focus:border-sky-400/60"
+                                        />
+                                        <button
+                                            onClick={() => handleRenameDeck(deck.id)}
+                                            className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                                        >
+                                            Rename
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteDeck(deck.id, deck.name)}
+                                            className="px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold transition-colors cursor-pointer"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 {/* Challenge Mode */}
                 <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
                     <div className="flex items-center gap-2 text-slate-200">

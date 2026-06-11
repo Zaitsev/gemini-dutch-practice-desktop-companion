@@ -18,6 +18,7 @@ type App struct {
 	reviewTimer *time.Timer
 	timerLock   sync.Mutex
 	words       []Word
+	hasFetched  bool
 	wordsLock   sync.Mutex
 	// Track the state manually when hiding/showing
 	isWindowOpen bool
@@ -50,9 +51,11 @@ func (a *App) startup(ctx context.Context) {
 
 	// Prime in-memory flashcard cache on startup when available.
 	if words, err := a.FetchFlashcards(); err != nil {
-		fmt.Printf("[Startup] Initial flashcard fetch skipped: %v\n", err)
+		fmt.Printf("[Startup] Initial flashcard fetch skipped (Client offline or Auth expired): %v\n", err)
+		fmt.Println("[Startup] Friendly note: The background checker will automatically attempt to fetch cards and self-heal in the background.")
 	} else {
 		a.setWords(words)
+		fmt.Printf("[Startup] Initial flashcard fetch succeeded! Cached %d words.\n", len(words))
 	}
 
 	// Trigger background checker loop
@@ -63,7 +66,41 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) setWords(words []Word) {
 	a.wordsLock.Lock()
 	a.words = words
+	a.hasFetched = true
 	a.wordsLock.Unlock()
+}
+
+func (a *App) isCacheEmptyAndUnfetched() bool {
+	a.wordsLock.Lock()
+	defer a.wordsLock.Unlock()
+	return len(a.words) == 0 && !a.hasFetched
+}
+
+func (a *App) newFirestoreClient() (*FirestoreClient, error) {
+	a.configLock.Lock()
+	uid := a.config.Uid
+	token := a.config.IdToken
+	refreshToken := a.config.RefreshToken
+	useEmulator := a.config.UseEmulator
+	a.configLock.Unlock()
+
+	if uid == "" || token == "" {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	client := NewFirestoreClient(token, refreshToken, uid, useEmulator, "127.0.0.1", func(newIdToken, newRefreshToken string) {
+		a.configLock.Lock()
+		a.config.IdToken = newIdToken
+		if newRefreshToken != "" {
+			a.config.RefreshToken = newRefreshToken
+		}
+		if err := a.config.Save(); err != nil {
+			fmt.Printf("[Config] Error auto-saving refreshed token: %v\n", err)
+		}
+		a.configLock.Unlock()
+	})
+
+	return client, nil
 }
 
 func (a *App) wordsCount() int {
@@ -183,86 +220,136 @@ func (a *App) ForseRefreshWords() {
 // FetchFlashcards fetches and merges word definitions with user dictionary SRS levels
 func (a *App) FetchFlashcards() ([]Word, error) {
 	runtime.LogInfo(a.ctx, "Fetching flashcards from Firestore...")
-	a.configLock.Lock()
-	uid := a.config.Uid
-	token := a.config.IdToken
-	refreshToken := a.config.RefreshToken
-	useEmulator := a.config.UseEmulator
-	a.configLock.Unlock()
-
-	if uid == "" || token == "" {
-		return nil, fmt.Errorf("user not authenticated")
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return nil, err
 	}
 
-	client := NewFirestoreClient(token, refreshToken, uid, useEmulator, "127.0.0.1", func(newIdToken, newRefreshToken string) {
-		a.configLock.Lock()
-		a.config.IdToken = newIdToken
-		if newRefreshToken != "" {
-			a.config.RefreshToken = newRefreshToken
-		}
-		if err := a.config.Save(); err != nil {
-			fmt.Printf("[Config] Error auto-saving refreshed token: %v\n", err)
-		}
-		a.configLock.Unlock()
-	})
-
 	// 1. Fetch SRS mappings from userDictionaries/{uid}
-	srsMap, err := client.GetUserDictionary()
+	dictionaryState, err := client.GetUserDictionary()
 	if err != nil {
 		return nil, fmt.Errorf("error fetching user srs dictionary: %v", err)
 	}
 
-	// 2. Collect all keys (word IDs) from the map into a []string slice
-	wordIds := make([]string, 0, len(srsMap))
-	for id := range srsMap {
+	return a.mergeWordsWithDictionary(client, dictionaryState)
+}
+
+type WordsAndDecks struct {
+	Words []Word `json:"words"`
+	Decks []Deck `json:"decks"`
+}
+
+// GetWordsAndDecks fetches words and decks in a single Firestore read.
+func (a *App) GetWordsAndDecks() (*WordsAndDecks, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return nil, err
+	}
+
+	dictionaryState, err := client.GetUserDictionary()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching user dictionary: %v", err)
+	}
+
+	words, err := a.mergeWordsWithDictionary(client, dictionaryState)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WordsAndDecks{
+		Words: words,
+		Decks: append([]Deck(nil), dictionaryState.Decks...),
+	}, nil
+}
+
+func (a *App) mergeWordsWithDictionary(client *FirestoreClient, dictionaryState DictionaryState) ([]Word, error) {
+	wordIds := make([]string, 0, len(dictionaryState.Words))
+	for id := range dictionaryState.Words {
 		wordIds = append(wordIds, id)
 	}
 
-	// 3. Fetch words using the batchGet REST client
 	words, err := client.GetWordsByIds(wordIds)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching word documents: %v", err)
 	}
 
-	// 4. Merge word structures with SRS stats
 	for i := range words {
-		if srsStats, exists := srsMap[words[i].Id]; exists {
-			words[i].SrsLevel = int(srsStats["srsLevel"])
-			words[i].NextReviewAt = srsStats["nextReviewAt"]
+		if srsStats, exists := dictionaryState.Words[words[i].Id]; exists {
+			words[i].SrsLevel = int(srsStats.SrsLevel)
+			words[i].NextReviewAt = srsStats.NextReviewAt
+			words[i].DeckIds = append([]string(nil), srsStats.DeckIds...)
 		} else {
-			// Defaults if not mapped in dictionary yet
 			words[i].SrsLevel = 0
 			words[i].NextReviewAt = time.Now().UnixNano() / int64(time.Millisecond)
+			words[i].DeckIds = []string{defaultDeckID}
 		}
 	}
 	runtime.LogInfof(a.ctx, "[GetFlashcards] fetched %d words", len(words))
 	return words, nil
 }
 
+func (a *App) GetDecks() ([]Deck, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetDecks()
+}
+
+func (a *App) CreateDeck(name string) (bool, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return false, err
+	}
+	if _, err := client.CreateDeck(name); err != nil {
+		return false, err
+	}
+	go a.ForseRefreshWords()
+	return true, nil
+}
+
+func (a *App) RenameDeck(deckID, name string) (bool, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return false, err
+	}
+	if _, err := client.RenameDeck(deckID, name); err != nil {
+		return false, err
+	}
+	go a.ForseRefreshWords()
+	return true, nil
+}
+
+func (a *App) DeleteDeck(deckID string) (bool, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return false, err
+	}
+	if _, err := client.DeleteDeck(deckID); err != nil {
+		return false, err
+	}
+	go a.ForseRefreshWords()
+	return true, nil
+}
+
+func (a *App) SetWordDeckIds(wordID string, deckIds []string) (bool, error) {
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return false, err
+	}
+	if err := client.SetWordDeckIds(wordID, deckIds); err != nil {
+		return false, err
+	}
+	go a.ForseRefreshWords()
+	return true, nil
+}
+
 // UpdateSRS saves review progress to Firestore REST API
 func (a *App) UpdateSRS(wordId string, srsLevel int, nextReviewAt int64) (bool, error) {
-	a.configLock.Lock()
-	uid := a.config.Uid
-	token := a.config.IdToken
-	refreshToken := a.config.RefreshToken
-	useEmulator := a.config.UseEmulator
-	a.configLock.Unlock()
-
-	if uid == "" || token == "" {
-		return false, fmt.Errorf("user not authenticated")
+	client, err := a.newFirestoreClient()
+	if err != nil {
+		return false, err
 	}
-
-	client := NewFirestoreClient(token, refreshToken, uid, useEmulator, "127.0.0.1", func(newIdToken, newRefreshToken string) {
-		a.configLock.Lock()
-		a.config.IdToken = newIdToken
-		if newRefreshToken != "" {
-			a.config.RefreshToken = newRefreshToken
-		}
-		if err := a.config.Save(); err != nil {
-			fmt.Printf("[Config] Error auto-saving refreshed token: %v\n", err)
-		}
-		a.configLock.Unlock()
-	})
 	if err := client.UpdateWordSRS(wordId, srsLevel, nextReviewAt); err != nil {
 		return false, err
 	}
@@ -542,21 +629,36 @@ func (a *App) ResetReviewTimer() {
 		return
 	}
 	
-	// TODO check a.words, try to retrieve if empty, and handle errors with a retry cooldown
-	// if err != nil {
-	// 	fmt.Printf("[Timer] Error getting flashcards: %v\n", err)
-		
-	// 	// If network fails, retry after a safe cooldown (5 minutes)
-	// 	a.timerLock.Lock()
-	// 	if a.reviewTimer != nil {
-	// 		a.reviewTimer.Stop()
-	// 	}
-	// 	a.reviewTimer = time.AfterFunc(5*time.Minute, func() {
-	// 		a.ResetReviewTimer()
-	// 	})
-	// 	a.timerLock.Unlock()
-	// 	return
-	// }
+	// If the in-memory flashcard list is empty and has never been successfully fetched, trigger an automatic background fetch.
+	if a.isCacheEmptyAndUnfetched() {
+		fmt.Println("[Timer] In-memory flashcard cache is empty. Attempting self-healing background fetch...")
+		go func() {
+			words, err := a.FetchFlashcards()
+			if err != nil {
+				// Provide highly user-friendly diagnostic logs showing cause and mitigation
+				fmt.Printf("[Timer] Background flashcard fetch failed: %v\n", err)
+				fmt.Println("[Timer] Reason: Local companion client is offline, Firestore authentication is expired, or Firestore rules are denying permission.")
+				fmt.Println("[Timer] Mitigation: Will automatically retry in 5 minutes (self-healing cooldown). Check internet connection or log out and log back in if problem persists.")
+				
+				// Schedule retry in 5 minutes
+				a.timerLock.Lock()
+				if a.reviewTimer != nil {
+					a.reviewTimer.Stop()
+				}
+				a.reviewTimer = time.AfterFunc(5*time.Minute, func() {
+					a.ResetReviewTimer()
+				})
+				a.timerLock.Unlock()
+				return
+			}
+			
+			// Success! Cache the words & reset the review timer to instantly schedule the first due check dynamically.
+			a.setWords(words)
+			fmt.Printf("[Timer] Self-healing background flashcard fetch successful! Retrieved %d words. Dynamic review schedules will now compute.\n", len(words))
+			go a.ResetReviewTimer()
+		}()
+		return
+	}
 
 	var nextDueMs int64 = 0
 	dueCount := 0

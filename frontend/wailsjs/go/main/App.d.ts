@@ -4,21 +4,31 @@ import {main} from '../models';
 
 export function ClearDnd():Promise<boolean>;
 
+export function CreateDeck(arg1:string):Promise<boolean>;
+
+export function DeleteDeck(arg1:string):Promise<boolean>;
+
 export function FetchFlashcards():Promise<Array<main.Word>>;
 
 export function ForseRefreshWords():Promise<void>;
 
 export function GetConfig():Promise<main.Config>;
 
+export function GetDecks():Promise<Array<main.Deck>>;
+
 export function GetDndStatus():Promise<main.DndStatus>;
 
 export function GetWords():Promise<Array<main.Word>>;
+
+export function GetWordsAndDecks():Promise<main.WordsAndDecks>;
 
 export function HideWindow():Promise<void>;
 
 export function Login():Promise<main.Config>;
 
 export function Logout():Promise<boolean>;
+
+export function RenameDeck(arg1:string,arg2:string):Promise<boolean>;
 
 export function ResetReviewTimer():Promise<void>;
 
@@ -31,6 +41,8 @@ export function SaveWindowState():Promise<void>;
 export function SetDndMinutes(arg1:number):Promise<boolean>;
 
 export function SetMChallengeMode(arg1:string):Promise<boolean>;
+
+export function SetWordDeckIds(arg1:string,arg2:Array<string>):Promise<boolean>;
 
 export function ShowAppCardWindow():Promise<void>;
 

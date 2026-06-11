@@ -2,6 +2,7 @@ import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
+import { WordDeckAssignments } from "./WordDeckAssignments";
 
 export function getColorBySrsLevel(level: number): string {
     if (level <= 1) return 'bg-red-500/20 border-red-500/50 text-red-500';
@@ -59,6 +60,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                         {activeCard.english}
                     </h2>
                     <Examples activeCard={activeCard} />
+                    <WordDeckAssignments activeCard={activeCard} />
                 </div>
 
                 {/* Flipback hint */}

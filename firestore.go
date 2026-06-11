@@ -7,12 +7,34 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 const ProjectId = "gemini-dutch-practice-latest"
 const ProdDatabaseId = "gemini-dutch-practice-v1"
 const EmulatorDatabaseId = "(default)"
+const defaultDeckID = "default"
+const defaultDeckName = "Default"
+
+type Deck struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type DictionaryWordState struct {
+	SrsLevel    int64    `json:"srsLevel"`
+	NextReviewAt int64   `json:"nextReviewAt"`
+	DeckIds     []string `json:"deckIds"`
+}
+
+type DictionaryState struct {
+	Words map[string]DictionaryWordState `json:"words"`
+	Decks []Deck                         `json:"decks"`
+}
 
 type Word struct {
 	Id                  string                 `json:"id"`
@@ -24,6 +46,7 @@ type Word struct {
 	Examples            []interface{}          `json:"examples,omitempty"`
 	SrsLevel            int                    `json:"srsLevel"`
 	NextReviewAt        int64                  `json:"nextReviewAt"`
+	DeckIds             []string               `json:"deckIds,omitempty"`
 	WordAudioUrl        string                 `json:"wordAudioUrl,omitempty"`
 	WordTeacherAudioUrl string                 `json:"wordTeacherAudioUrl,omitempty"`
 }
@@ -99,6 +122,545 @@ func parseWordFromFields(wordId string, fields map[string]interface{}) Word {
 		WordAudioUrl:        wordAudioUrlVal,
 		WordTeacherAudioUrl: wordTeacherAudioUrlVal,
 	}
+}
+
+func defaultDictionaryData() DictionaryState {
+	return DictionaryState{
+		Words: map[string]DictionaryWordState{},
+		Decks: []Deck{{Id: defaultDeckID, Name: defaultDeckName}},
+	}
+}
+
+func copyDictionaryData(data DictionaryState) DictionaryState {
+	cloned := DictionaryState{
+		Words: make(map[string]DictionaryWordState, len(data.Words)),
+		Decks: append([]Deck(nil), data.Decks...),
+	}
+	for wordID, wordState := range data.Words {
+		clonedState := wordState
+		clonedState.DeckIds = append([]string(nil), wordState.DeckIds...)
+		cloned.Words[wordID] = clonedState
+	}
+	return cloned
+}
+
+func normalizeDictionaryData(data DictionaryState) (DictionaryState, bool) {
+	result := copyDictionaryData(data)
+	changed := false
+
+	if len(result.Decks) == 0 {
+		result.Decks = []Deck{{Id: defaultDeckID, Name: defaultDeckName}}
+		changed = true
+	}
+
+	deckLookup := make(map[string]struct{}, len(result.Decks))
+	defaultDeckFound := false
+	filteredDecks := make([]Deck, 0, len(result.Decks)+1)
+	for _, deck := range result.Decks {
+		deck.Id = strings.TrimSpace(deck.Id)
+		deck.Name = strings.TrimSpace(deck.Name)
+		if deck.Id == "" {
+			changed = true
+			continue
+		}
+		if deck.Name == "" {
+			deck.Name = deck.Id
+			changed = true
+		}
+		if _, exists := deckLookup[deck.Id]; exists {
+			changed = true
+			continue
+		}
+		if deck.Id == defaultDeckID {
+			defaultDeckFound = true
+		}
+		deckLookup[deck.Id] = struct{}{}
+		filteredDecks = append(filteredDecks, deck)
+	}
+
+	if !defaultDeckFound {
+		filteredDecks = append([]Deck{{Id: defaultDeckID, Name: defaultDeckName}}, filteredDecks...)
+		deckLookup[defaultDeckID] = struct{}{}
+		changed = true
+	}
+
+	for wordID, wordState := range result.Words {
+		normalizedDeckIds := make([]string, 0, len(wordState.DeckIds)+1)
+		seen := make(map[string]struct{}, len(wordState.DeckIds)+1)
+		for _, deckID := range wordState.DeckIds {
+			deckID = strings.TrimSpace(deckID)
+			if deckID == "" {
+				continue
+			}
+			if _, exists := deckLookup[deckID]; !exists {
+				changed = true
+				continue
+			}
+			if _, exists := seen[deckID]; exists {
+				changed = true
+				continue
+			}
+			seen[deckID] = struct{}{}
+			normalizedDeckIds = append(normalizedDeckIds, deckID)
+		}
+		if len(normalizedDeckIds) == 0 {
+			normalizedDeckIds = []string{defaultDeckID}
+			changed = true
+		} else if _, exists := seen[defaultDeckID]; !exists {
+			normalizedDeckIds = append([]string{defaultDeckID}, normalizedDeckIds...)
+			changed = true
+		}
+		wordState.DeckIds = normalizedDeckIds
+		result.Words[wordID] = wordState
+	}
+
+	result.Decks = filteredDecks
+	return result, changed
+}
+
+func sortDictionaryDecks(decks []Deck) []Deck {
+	sorted := append([]Deck(nil), decks...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		if sorted[i].Id == defaultDeckID {
+			return true
+		}
+		if sorted[j].Id == defaultDeckID {
+			return false
+		}
+		nameI := strings.ToLower(sorted[i].Name)
+		nameJ := strings.ToLower(sorted[j].Name)
+		if nameI == nameJ {
+			return sorted[i].Id < sorted[j].Id
+		}
+		return nameI < nameJ
+	})
+	return sorted
+}
+
+func encodeDictionaryData(data DictionaryState) map[string]interface{} {
+	deckValues := make([]interface{}, 0, len(data.Decks))
+	for _, deck := range data.Decks {
+		deckValues = append(deckValues, map[string]interface{}{
+			"mapValue": map[string]interface{}{
+				"fields": map[string]interface{}{
+					"id": map[string]interface{}{"stringValue": deck.Id},
+					"name": map[string]interface{}{"stringValue": deck.Name},
+				},
+			},
+		})
+	}
+
+	wordFields := make(map[string]interface{}, len(data.Words))
+	for wordID, wordState := range data.Words {
+		deckIds := make([]interface{}, 0, len(wordState.DeckIds))
+		for _, deckID := range wordState.DeckIds {
+			deckIds = append(deckIds, map[string]interface{}{"stringValue": deckID})
+		}
+		wordFields[wordID] = map[string]interface{}{
+			"mapValue": map[string]interface{}{
+				"fields": map[string]interface{}{
+					"srsLevel": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.SrsLevel, 10)},
+					"nextReviewAt": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.NextReviewAt, 10)},
+					"deckIds": map[string]interface{}{
+						"arrayValue": map[string]interface{}{"values": deckIds},
+					},
+				},
+			},
+		}
+	}
+
+	return map[string]interface{}{
+		"decks": map[string]interface{}{
+			"arrayValue": map[string]interface{}{"values": deckValues},
+		},
+		"words": map[string]interface{}{
+			"mapValue": map[string]interface{}{"fields": wordFields},
+		},
+	}
+}
+
+func parseDictionaryData(response map[string]interface{}) DictionaryState {
+	data := defaultDictionaryData()
+	fields, ok := response["fields"].(map[string]interface{})
+	if !ok {
+		return data
+	}
+
+	if decksObj, ok := fields["decks"].(map[string]interface{}); ok {
+		if arrayVal, ok := decksObj["arrayValue"].(map[string]interface{}); ok {
+			if values, ok := arrayVal["values"].([]interface{}); ok {
+				parsedDecks := make([]Deck, 0, len(values))
+				for _, rawDeck := range values {
+					deckMap, ok := rawDeck.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					deckValue, ok := deckMap["mapValue"].(map[string]interface{})
+					if !ok {
+						continue
+					}
+					deckFields, ok := deckValue["fields"].(map[string]interface{})
+					if !ok {
+						continue
+					}
+					deck := Deck{}
+					if idObj, ok := deckFields["id"].(map[string]interface{}); ok {
+						deck.Id, _ = idObj["stringValue"].(string)
+					}
+					if nameObj, ok := deckFields["name"].(map[string]interface{}); ok {
+						deck.Name, _ = nameObj["stringValue"].(string)
+					}
+					if deck.Id != "" {
+						parsedDecks = append(parsedDecks, deck)
+					}
+				}
+				if len(parsedDecks) > 0 {
+					data.Decks = parsedDecks
+				}
+			}
+		}
+	}
+
+	if wordsObj, ok := fields["words"].(map[string]interface{}); ok {
+		if mapValue, ok := wordsObj["mapValue"].(map[string]interface{}); ok {
+			if wordFields, ok := mapValue["fields"].(map[string]interface{}); ok {
+				parsedWords := make(map[string]DictionaryWordState, len(wordFields))
+				for wordID, rawWord := range wordFields {
+					wordMap, ok := rawWord.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					wordValue, ok := wordMap["mapValue"].(map[string]interface{})
+					if !ok {
+						continue
+					}
+					wordFieldsMap, ok := wordValue["fields"].(map[string]interface{})
+					if !ok {
+						continue
+					}
+
+					wordState := DictionaryWordState{}
+					if srsLevelObj, ok := wordFieldsMap["srsLevel"].(map[string]interface{}); ok {
+						if srsLevelStr, ok := srsLevelObj["integerValue"].(string); ok {
+							wordState.SrsLevel, _ = strconv.ParseInt(srsLevelStr, 10, 64)
+						}
+					}
+					if nextReviewObj, ok := wordFieldsMap["nextReviewAt"].(map[string]interface{}); ok {
+						if nextReviewStr, ok := nextReviewObj["integerValue"].(string); ok {
+							wordState.NextReviewAt, _ = strconv.ParseInt(nextReviewStr, 10, 64)
+						}
+					}
+					if deckIdsObj, ok := wordFieldsMap["deckIds"].(map[string]interface{}); ok {
+						if arrayVal, ok := deckIdsObj["arrayValue"].(map[string]interface{}); ok {
+							if values, ok := arrayVal["values"].([]interface{}); ok {
+								wordState.DeckIds = make([]string, 0, len(values))
+								for _, value := range values {
+									valueMap, ok := value.(map[string]interface{})
+									if !ok {
+										continue
+									}
+									if deckID, ok := valueMap["stringValue"].(string); ok && deckID != "" {
+										wordState.DeckIds = append(wordState.DeckIds, deckID)
+									}
+								}
+							}
+						}
+					}
+
+					parsedWords[wordID] = wordState
+				}
+				data.Words = parsedWords
+			}
+		}
+	}
+
+	return data
+}
+
+func (fc *FirestoreClient) loadUserDictionaryData() (DictionaryState, bool, error) {
+	docUrl := fmt.Sprintf("%s/userDictionaries/%s", fc.GetBaseUrl(), fc.uid)
+	resp, err := fc.doRequest("GET", docUrl, nil)
+	if err != nil {
+		return defaultDictionaryData(), false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return defaultDictionaryData(), false, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return defaultDictionaryData(), false, fmt.Errorf("failed to get user dictionary (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return defaultDictionaryData(), false, err
+	}
+
+	return parseDictionaryData(response), true, nil
+}
+
+func (fc *FirestoreClient) saveUserDictionaryData(data DictionaryState) error {
+	docUrl := fmt.Sprintf("%s/userDictionaries/%s", fc.GetBaseUrl(), fc.uid)
+	u, err := url.Parse(docUrl)
+	if err != nil {
+		return err
+	}
+	query := u.Query()
+	query.Add("updateMask.fieldPaths", "decks")
+	query.Add("updateMask.fieldPaths", "words")
+	u.RawQuery = query.Encode()
+
+	body, err := json.Marshal(map[string]interface{}{"fields": encodeDictionaryData(data)})
+	if err != nil {
+		return err
+	}
+
+	resp, err := fc.doRequest("PATCH", u.String(), body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("failed to save dictionary data (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}
+
+func (fc *FirestoreClient) GetUserDictionary() (DictionaryState, error) {
+	data, exists, err := fc.loadUserDictionaryData()
+	if err != nil {
+		return defaultDictionaryData(), err
+	}
+	normalized, changed := normalizeDictionaryData(data)
+	normalized.Decks = sortDictionaryDecks(normalized.Decks)
+	if changed || !exists {
+		if err := fc.saveUserDictionaryData(normalized); err != nil {
+			return defaultDictionaryData(), err
+		}
+	}
+	return normalized, nil
+}
+
+func (fc *FirestoreClient) GetDecks() ([]Deck, error) {
+	data, err := fc.GetUserDictionary()
+	if err != nil {
+		return nil, err
+	}
+	return append([]Deck(nil), data.Decks...), nil
+}
+
+func (fc *FirestoreClient) CreateDeck(name string) ([]Deck, error) {
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		return nil, fmt.Errorf("deck name cannot be empty")
+	}
+
+	data, err := fc.GetUserDictionary()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, deck := range data.Decks {
+		if strings.EqualFold(deck.Name, trimmedName) {
+			return nil, fmt.Errorf("deck name already exists")
+		}
+	}
+
+	data.Decks = append(data.Decks, Deck{Id: uuid.NewString(), Name: trimmedName})
+	data.Decks = sortDictionaryDecks(data.Decks)
+	if err := fc.saveUserDictionaryData(data); err != nil {
+		return nil, err
+	}
+	return append([]Deck(nil), data.Decks...), nil
+}
+
+func (fc *FirestoreClient) RenameDeck(deckID, name string) ([]Deck, error) {
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		return nil, fmt.Errorf("deck name cannot be empty")
+	}
+	if deckID == defaultDeckID {
+		return nil, fmt.Errorf("default deck cannot be renamed")
+	}
+
+	data, err := fc.GetUserDictionary()
+	if err != nil {
+		return nil, err
+	}
+
+	updated := false
+	for i := range data.Decks {
+		if data.Decks[i].Id == deckID {
+			data.Decks[i].Name = trimmedName
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		return nil, fmt.Errorf("deck not found")
+	}
+	for _, deck := range data.Decks {
+		if deck.Id != deckID && strings.EqualFold(deck.Name, trimmedName) {
+			return nil, fmt.Errorf("deck name already exists")
+		}
+	}
+
+	data.Decks = sortDictionaryDecks(data.Decks)
+	if err := fc.saveUserDictionaryData(data); err != nil {
+		return nil, err
+	}
+	return append([]Deck(nil), data.Decks...), nil
+}
+
+func (fc *FirestoreClient) DeleteDeck(deckID string) ([]Deck, error) {
+	if deckID == defaultDeckID {
+		return nil, fmt.Errorf("default deck cannot be deleted")
+	}
+
+	data, err := fc.GetUserDictionary()
+	if err != nil {
+		return nil, err
+	}
+
+	filteredDecks := make([]Deck, 0, len(data.Decks)-1)
+	deleted := false
+	for _, deck := range data.Decks {
+		if deck.Id == deckID {
+			deleted = true
+			continue
+		}
+		filteredDecks = append(filteredDecks, deck)
+	}
+	if !deleted {
+		return nil, fmt.Errorf("deck not found")
+	}
+
+	deckLookup := make(map[string]struct{}, len(filteredDecks))
+	for _, deck := range filteredDecks {
+		deckLookup[deck.Id] = struct{}{}
+	}
+	deckLookup[defaultDeckID] = struct{}{}
+
+	for wordID, wordState := range data.Words {
+		filteredIDs := make([]string, 0, len(wordState.DeckIds))
+		for _, existingDeckID := range wordState.DeckIds {
+			if existingDeckID == deckID {
+				continue
+			}
+			if _, exists := deckLookup[existingDeckID]; !exists {
+				continue
+			}
+			filteredIDs = append(filteredIDs, existingDeckID)
+		}
+		if len(filteredIDs) == 0 {
+			filteredIDs = []string{defaultDeckID}
+		}
+		wordState.DeckIds = filteredIDs
+		data.Words[wordID] = wordState
+	}
+
+	data.Decks = sortDictionaryDecks(filteredDecks)
+	if err := fc.saveUserDictionaryData(data); err != nil {
+		return nil, err
+	}
+	return append([]Deck(nil), data.Decks...), nil
+}
+
+// SetWordDeckIds surgically patches only the deckIds field for one word,
+// preserving all other SRS fields and avoiding a full map rewrite.
+func (fc *FirestoreClient) SetWordDeckIds(wordID string, deckIds []string) error {
+	// Validate against current deck list so we reject unknown IDs before writing.
+	data, err := fc.GetUserDictionary()
+	if err != nil {
+		return err
+	}
+
+	deckLookup := make(map[string]struct{}, len(data.Decks))
+	for _, deck := range data.Decks {
+		deckLookup[deck.Id] = struct{}{}
+	}
+
+	cleanedIDs := make([]string, 0, len(deckIds)+1)
+	seen := make(map[string]struct{}, len(deckIds)+1)
+	for _, deckID := range deckIds {
+		deckID = strings.TrimSpace(deckID)
+		if deckID == "" {
+			continue
+		}
+		if _, exists := deckLookup[deckID]; !exists {
+			continue
+		}
+		if _, exists := seen[deckID]; exists {
+			continue
+		}
+		seen[deckID] = struct{}{}
+		cleanedIDs = append(cleanedIDs, deckID)
+	}
+	if len(cleanedIDs) == 0 {
+		cleanedIDs = []string{defaultDeckID}
+	} else if _, exists := seen[defaultDeckID]; !exists {
+		cleanedIDs = append([]string{defaultDeckID}, cleanedIDs...)
+	}
+
+	// Surgical PATCH — only update words.<wordID>.deckIds, leave SRS fields untouched.
+	docUrl := fmt.Sprintf("%s/userDictionaries/%s", fc.GetBaseUrl(), fc.uid)
+	u, err := url.Parse(docUrl)
+	if err != nil {
+		return err
+	}
+	q := u.Query()
+	escapedWordId := escapeFieldPathSegment(wordID)
+	q.Add("updateMask.fieldPaths", fmt.Sprintf("words.%s.deckIds", escapedWordId))
+	u.RawQuery = q.Encode()
+
+	deckIdValues := make([]interface{}, 0, len(cleanedIDs))
+	for _, deckID := range cleanedIDs {
+		deckIdValues = append(deckIdValues, map[string]interface{}{"stringValue": deckID})
+	}
+
+	payload := map[string]interface{}{
+		"fields": map[string]interface{}{
+			"words": map[string]interface{}{
+				"mapValue": map[string]interface{}{
+					"fields": map[string]interface{}{
+						wordID: map[string]interface{}{
+							"mapValue": map[string]interface{}{
+								"fields": map[string]interface{}{
+									"deckIds": map[string]interface{}{
+										"arrayValue": map[string]interface{}{"values": deckIdValues},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	resp, err := fc.doRequest("PATCH", u.String(), body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("failed to patch word deck ids (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
 }
 
 const FirebaseApiKey = "AIzaSyA2MKBe2T3kuaPtHSpze2Dsq3VRmbnfqTo"
@@ -209,13 +771,15 @@ func (fc *FirestoreClient) doRequest(method, url string, body []byte) (*http.Res
 		return nil, err
 	}
 
-	// If we got 401 Unauthorized in production, try to refresh the token and retry once
-	if !fc.useEmulator && resp.StatusCode == http.StatusUnauthorized && fc.refreshToken != "" {
-		resp.Body.Close() // Close the current unauthorized body
+	// If we got 401 Unauthorized or 403 Forbidden in production, try to refresh the token and retry once.
+	// Note: Firestore REST API returns 403 Forbidden (PERMISSION_DENIED) instead of 401 when the ID token is expired
+	// because security rules (e.g. checking request.auth != null) fail due to an invalid/nil auth context.
+	if !fc.useEmulator && (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) && fc.refreshToken != "" {
+		resp.Body.Close() // Close the current unauthorized/forbidden body
 
-		fmt.Println("[FirestoreClient] 401 Unauthorized received. Attempting token refresh...")
+		fmt.Printf("[FirestoreClient] %d response received (likely expired/invalid token). Attempting token refresh...\n", resp.StatusCode)
 		if _, refreshErr := fc.RefreshToken(); refreshErr != nil {
-			return nil, fmt.Errorf("failed to refresh token after 401: %v", refreshErr)
+			return nil, fmt.Errorf("failed to refresh token after %d: %v", resp.StatusCode, refreshErr)
 		}
 
 		// Recreate the request with the new token
@@ -253,89 +817,6 @@ func (fc *FirestoreClient) GetRequest(method, url string, body []byte) (*http.Re
 		req.Header.Set("Authorization", "Bearer "+fc.idToken)
 	}
 	return req, nil
-}
-
-// GetUserDictionary fetches SRS mappings from userDictionaries/{uid}
-func (fc *FirestoreClient) GetUserDictionary() (map[string]map[string]int64, error) {
-	docUrl := fmt.Sprintf("%s/userDictionaries/%s", fc.GetBaseUrl(), fc.uid)
-	resp, err := fc.doRequest("GET", docUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		// No dictionary found, return empty map
-		return make(map[string]map[string]int64), nil
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to get user dictionary (status %d): %s", resp.StatusCode, string(body))
-	}
-
-	var response map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-
-	// Parser for nested Firestore fields mapping: words -> mapValue -> fields -> wordId -> mapValue -> fields -> (srsLevel, nextReviewAt)
-	srsMap := make(map[string]map[string]int64)
-	fields, ok := response["fields"].(map[string]interface{})
-	if !ok {
-		return srsMap, nil
-	}
-
-	wordsObj, ok := fields["words"].(map[string]interface{})
-	if !ok {
-		return srsMap, nil
-	}
-
-	mapValue, ok := wordsObj["mapValue"].(map[string]interface{})
-	if !ok {
-		return srsMap, nil
-	}
-
-	wordFields, ok := mapValue["fields"].(map[string]interface{})
-	if !ok {
-		return srsMap, nil
-	}
-
-	for wordId, wordData := range wordFields {
-		wordDataMap, ok := wordData.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		wordMapValue, ok := wordDataMap["mapValue"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-		subFields, ok := wordMapValue["fields"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		srsLevelVal := int64(0)
-		if srsLevelObj, exists := subFields["srsLevel"].(map[string]interface{}); exists {
-			if srsLStr, ok := srsLevelObj["integerValue"].(string); ok {
-				srsLevelVal, _ = strconv.ParseInt(srsLStr, 10, 64)
-			}
-		}
-
-		nextReviewVal := int64(0)
-		if nextReviewObj, exists := subFields["nextReviewAt"].(map[string]interface{}); exists {
-			if nextRStr, ok := nextReviewObj["integerValue"].(string); ok {
-				nextReviewVal, _ = strconv.ParseInt(nextRStr, 10, 64)
-			}
-		}
-
-		srsMap[wordId] = map[string]int64{
-			"srsLevel":     srsLevelVal,
-			"nextReviewAt": nextReviewVal,
-		}
-	}
-
-	return srsMap, nil
 }
 
 // GetWordsByCreator fetches all word documents where creatorId == uid
@@ -566,9 +1047,6 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 									"nextReviewAt": map[string]interface{}{
 										"integerValue": strconv.FormatInt(nextReviewAt, 10),
 									},
-									"deckId": map[string]interface{}{
-										"integerValue": 0,
-									},
 								},
 							},
 						},
@@ -596,6 +1074,20 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 		// Fallback PATCH payload to initialize the document with empty seenWords and first word's SRS
 		fallbackPayload := map[string]interface{}{
 			"fields": map[string]interface{}{
+				"decks": map[string]interface{}{
+					"arrayValue": map[string]interface{}{
+						"values": []interface{}{
+							map[string]interface{}{
+								"mapValue": map[string]interface{}{
+									"fields": map[string]interface{}{
+										"id": map[string]interface{}{"stringValue": defaultDeckID},
+										"name": map[string]interface{}{"stringValue": defaultDeckName},
+									},
+								},
+							},
+						},
+					},
+				},
 				"words": map[string]interface{}{
 					"mapValue": map[string]interface{}{
 						"fields": map[string]interface{}{
@@ -607,6 +1099,13 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 										},
 										"nextReviewAt": map[string]interface{}{
 											"integerValue": strconv.FormatInt(nextReviewAt, 10),
+										},
+										"deckIds": map[string]interface{}{
+											"arrayValue": map[string]interface{}{
+												"values": []interface{}{
+													map[string]interface{}{"stringValue": defaultDeckID},
+												},
+											},
 										},
 									},
 								},

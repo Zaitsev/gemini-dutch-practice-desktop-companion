@@ -6,6 +6,14 @@ export function ClearDnd() {
   return window['go']['main']['App']['ClearDnd']();
 }
 
+export function CreateDeck(arg1) {
+  return window['go']['main']['App']['CreateDeck'](arg1);
+}
+
+export function DeleteDeck(arg1) {
+  return window['go']['main']['App']['DeleteDeck'](arg1);
+}
+
 export function FetchFlashcards() {
   return window['go']['main']['App']['FetchFlashcards']();
 }
@@ -18,12 +26,20 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetDecks() {
+  return window['go']['main']['App']['GetDecks']();
+}
+
 export function GetDndStatus() {
   return window['go']['main']['App']['GetDndStatus']();
 }
 
 export function GetWords() {
   return window['go']['main']['App']['GetWords']();
+}
+
+export function GetWordsAndDecks() {
+  return window['go']['main']['App']['GetWordsAndDecks']();
 }
 
 export function HideWindow() {
@@ -36,6 +52,10 @@ export function Login() {
 
 export function Logout() {
   return window['go']['main']['App']['Logout']();
+}
+
+export function RenameDeck(arg1, arg2) {
+  return window['go']['main']['App']['RenameDeck'](arg1, arg2);
 }
 
 export function ResetReviewTimer() {
@@ -60,6 +80,10 @@ export function SetDndMinutes(arg1) {
 
 export function SetMChallengeMode(arg1) {
   return window['go']['main']['App']['SetMChallengeMode'](arg1);
+}
+
+export function SetWordDeckIds(arg1, arg2) {
+  return window['go']['main']['App']['SetWordDeckIds'](arg1, arg2);
 }
 
 export function ShowAppCardWindow() {
