@@ -2,14 +2,8 @@ import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
-import { WordDeckAssignments } from "./WordDeckAssignments";
+import { WordDeckAssignments, WordDeckBadges } from "./WordDeckAssignments";
 
-export function getColorBySrsLevel(level: number): string {
-    if (level <= 1) return 'bg-red-500/20 border-red-500/50 text-red-500';
-    if (level <= 3) return 'bg-orange-500/20 border-orange-500/50 text-orange-500';
-    if (level <= 5) return 'bg-blue-500/20 border-blue-500/50 text-blue-500';
-    return 'bg-green-500/20 border-green-500/50 text-green-500';
-}
 /** NormalCard component displays a single word card Dutch->English */
 export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
@@ -43,30 +37,38 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
 
             {/* Back (English + Context) */}
             <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl p-5 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
-{/* Mini info row */}
-                <div className="absolute top-3 right-3 text-[10px] text-slate-500">
-                    <span className={`uppercase tracking-widest font-bold ${getColorBySrsLevel(activeCard.srsLevel)}`}>L{activeCard.srsLevel}</span>
+                {/* Mini info row */}
+                <div className="absolute z-10 top-3 px-4 text-xs w-full flex gap-2 justify-end items-center text-slate-500">
+                    <WordDeckBadges activeCard={activeCard} />
                 </div>
 
                 {/* Translations Center */}
-                <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
-                    <h4 className="text-3xl font-normal tracking-tight text-slate-100 select-text">
-                        {activeCard.dutch}
-                    </h4>
-                    <div className="relative">
-                        <PlayAudioUrl activeCard={activeCard} />
+                <div className="py-4 min-h-full flex flex-col items-center justify-between gap-2 max-w-full max-h-screen px-2">
+                    <div className="flex flex-col items-center gap-4 max-w-full max-h-full px-2 ">
+                        <h4 className="text-3xl font-normal tracking-tight text-slate-100 select-text">
+                            {activeCard.dutch}
+                        </h4>
+                        <div className="relative">
+                            <PlayAudioUrl activeCard={activeCard} />
+                        </div>
+                        <h2 className="text-3xl font-normal tracking-tight text-indigo-300 select-text leading-snug">
+                            {activeCard.english}
+                        </h2>
                     </div>
-                    <h2 className="text-3xl font-normal tracking-tight text-indigo-300 select-text leading-snug">
-                        {activeCard.english}
-                    </h2>
-                    <Examples activeCard={activeCard} />
-                    <WordDeckAssignments activeCard={activeCard} />
-                </div>
+                    <div>
+                        <Examples activeCard={activeCard} />
+                    </div>
+                    <div className="w-full">
 
-                {/* Flipback hint */}
-                <div className="text-[9px] text-slate-500 opacity-60">
-                    Click to flip back
+                        <WordDeckAssignments activeCard={activeCard} />
+                    </div>
+       
                 </div>
+             {/* Flipback hint */}
+                    <div className="text-xs text-slate-500">
+                        Click to flip back
+                    </div>
+
             </div>
 
         </div>

@@ -80,3 +80,10 @@ export function calculateNextSRS(currentLevel: number, rating: SRSRating) {
 
     return { srsLevel: newSrsLevel, nextReviewAt };
 }
+
+export function getColorBySrsLevel(level: number): string {
+    if (level <= 1) return 'border border-red-500/20 text-red-500';
+    if (level <= 3) return 'border border-orange-500/20 text-orange-500';
+    if (level <= 5) return 'border border-blue-500/20 text-blue-500';
+    return 'border border-green-500/20 text-green-500';
+}
