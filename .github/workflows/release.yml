@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 env:
-  APP_NAME: Taalgem-companinon
+  APP_NAME: TaalGem-companion
   GO_VERSION: '1.26.4'
   NODE_VERSION: '20'
   WAILS_VERSION: 'v2.12.0'
