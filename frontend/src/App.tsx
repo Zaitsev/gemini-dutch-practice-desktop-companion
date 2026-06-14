@@ -49,8 +49,8 @@ const EMPTY_DND_STATUS: DndStatus = {
 function App() {
   const { setConfig, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
   const { loadCards } = useAppStateContext();
-  const { flashcards, setFlashcards, activeTab, setActiveTab, currentCardIndex, setCurrentCardIndex, setIsFlipped } = useAppStateContext();
-  const { practiceAll, setPracticeAll } = useAppStateContext(); // Practice all words if none are due
+  const { flashcards, setFlashcards, activeTab, setActiveTab,  setCurrentCardIndex, setIsFlipped } = useAppStateContext();
+  const {  setPracticeAll } = useAppStateContext(); // Practice all words if none are due
   const resizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dndStatus, setDndStatus] = useState<DndStatus>(EMPTY_DND_STATUS);
   const [dndMenuOpen, setDndMenuOpen] = useState(false);
@@ -277,7 +277,6 @@ function App() {
   // Filter due cards or provide practice stack
   const nowMs = Date.now();
   const dueCards = flashcards.filter(c => c.nextReviewAt <= nowMs);
-  const activeCards = practiceAll ? flashcards : dueCards;
 
 
 

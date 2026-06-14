@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
@@ -47,7 +48,10 @@ function getRandomExampleWithImage(examples: Word['examples']): { imageUrl: stri
 /** NormalImageCard component displays a single word card Dutch->English */
 export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
-    const randomExample = getRandomExampleWithImage(activeCard.examples);
+    const randomExample = useMemo(() => {
+        return getRandomExampleWithImage(activeCard.examples);
+    }, [activeCard.id, activeCard.examples]);
+
     if (!randomExample) {
         return <NormalCard activeCard={activeCard} />;
     }

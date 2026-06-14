@@ -15,34 +15,39 @@ import { countCardsByCurrentCategory } from "./utils";
 */
 
 
-const NormalCardComponentSrs3: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
-    //if srs level is 3 or higher, show image variant with probability 0.5, otherwise show normal card
-    if (activeCard.srsLevel > 5 && Math.random() > 0.3) {
-        return <NormalImageCard activeCard={activeCard} />;
-    }
-    if (activeCard.srsLevel > 3 && Math.random() > 0.5) {
-        return <NormalImageCard activeCard={activeCard} />;
-    }
-    return <NormalCard activeCard={activeCard} />;
-
-
-};
-//u3qxQRZm2n1A9y5IdqYX
 const CardComponent: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { config } = useAppStateContext();
-    //wails bindings don't allow union types as ChallengeMode, so we have to cast it here
     const challengeMode = (config?.challengeMode || 'normal') as ChallengeMode;
-    if (challengeMode === 'reverse') {
-        return <ReverseCard activeCard={activeCard} />;
-    }
-    if (challengeMode === 'mixed') {
-        return Math.random() > 0.5 ? (
-            <NormalCardComponentSrs3 activeCard={activeCard} />
-        ) : (
-            <ReverseCard activeCard={activeCard} />
-        );
-    }
-    return <NormalCardComponentSrs3 activeCard={activeCard} />;
+
+    const renderedCard = useMemo(() => {
+        // 1. Determine if we should show reverse card
+        let showReverse = false;
+        if (challengeMode === 'reverse') {
+            showReverse = true;
+        } else if (challengeMode === 'mixed') {
+            showReverse = Math.random() > 0.5;
+        }
+
+        if (showReverse) {
+            return <ReverseCard activeCard={activeCard} />;
+        }
+
+        // 2. Determine if we show image variant
+        let showImage = false;
+        if (activeCard.srsLevel > 5) {
+            showImage = Math.random() > 0.3;
+        } else if (activeCard.srsLevel > 3) {
+            showImage = Math.random() > 0.5;
+        }
+
+        if (showImage) {
+            return <NormalImageCard activeCard={activeCard} />;
+        }
+
+        return <NormalCard activeCard={activeCard} />;
+    }, [activeCard.id, challengeMode, activeCard.srsLevel]);
+
+    return renderedCard;
 };
 
 

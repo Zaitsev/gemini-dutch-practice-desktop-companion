@@ -7,6 +7,7 @@ import {
     RenameDeck,
     SaveInterval,
     SaveAutoHideOnAnswer,
+    SetMChallengeMode,
 } from "../wailsjs/go/main/App";
 import { useAppStateContext } from './provider';
 import { APP_VERSION, popUpIntervals } from './const';
@@ -82,6 +83,21 @@ export function SettingsPage() {
         } catch (err) {
             console.error("Error updating interval:", err);
             showToast("Error updating timing interval.", "error");
+        }
+    }, [setConfig, showToast]);
+
+    const handleUpdateChallengeMode = useCallback(async (mode: string) => {
+        try {
+            const success = await SetMChallengeMode(mode);
+            if (success) {
+                setConfig(prev => prev ? { ...prev, challengeMode: mode } : null);
+                showToast(`Cards mode updated to ${mode}.`, "success");
+            } else {
+                showToast("Failed to update cards mode.", "error");
+            }
+        } catch (err) {
+            console.error("Error updating cards mode:", err);
+            showToast("Error updating cards mode.", "error");
         }
     }, [setConfig, showToast]);
 
@@ -257,9 +273,7 @@ export function SettingsPage() {
                             return (
 
                                 <button key={mode}
-                                    onClick={() => {
-                                        setConfig(prev => prev ? { ...prev, challengeMode: mode as any } : null);
-                                    }}
+                                    onClick={() => handleUpdateChallengeMode(mode)}
                                     className={`py-2 px-4 rounded-lg font-bold text-xs border transition-all cursor-pointer ${active === mode
                                         ? 'bg-sky-500/10 border-sky-400 text-sky-400'
                                         : 'bg-slate-900/30 border-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
