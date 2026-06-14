@@ -375,7 +375,7 @@ function App() {
       </header>
 
       {/* Navigation Router Body */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 flex flex-col justify-start">
+      <main className={`flex-1 ${activeTab === 'reviews' && isLoggedIn ? 'overflow-hidden' : 'overflow-y-auto'} px-4 py-4 flex flex-col justify-start`}>
         {!isLoggedIn ? (
           <LoginPage />
         ) : (

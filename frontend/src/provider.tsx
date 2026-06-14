@@ -7,6 +7,7 @@ import {
 import type { ChallengeMode, Config } from "./const";
 const appStateContext = createContext<AppState | null>(null);
 const CURRENT_CARD_INDEX_STORAGE_KEY = "desktopCompanion.currentCardIndex";
+const SELECTED_DECK_ID_STORAGE_KEY = "desktopCompanion.selectedDeckId";
 export interface Deck {
     id: string;
     name: string;
@@ -60,6 +61,25 @@ const useAppState = () => {
         }
         setCurrentCardIndex_(index);
         console.log(`Updated currentCardIndex to ${currentCardIndex} and saved to localStorage.`);
+    };
+    const [selectedDeckId, setSelectedDeckId_] = useState<string>(() => {
+        try {
+            return localStorage.getItem(SELECTED_DECK_ID_STORAGE_KEY) ?? "all";
+        } catch {
+            return "all";
+        }
+    });
+
+    const setSelectedDeckId = (deckId: string) => {
+        try {
+            localStorage.setItem(SELECTED_DECK_ID_STORAGE_KEY, deckId);
+            localStorage.setItem(CURRENT_CARD_INDEX_STORAGE_KEY, "0");
+        } catch (e) {
+            console.error("Failed to save selectedDeckId to localStorage:", e);
+        }
+        setSelectedDeckId_(deckId);
+        setCurrentCardIndex_(0);
+        setIsFlipped(false);
     };
     const [isFlipped, setIsFlipped] = useState(false);
     const [savingSrs, setSavingSrs] = useState(false);
@@ -138,6 +158,8 @@ const useAppState = () => {
         setDecks,
         activeTab,
         setActiveTab,
+        selectedDeckId,
+        setSelectedDeckId,
         currentCardIndex,
         setCurrentCardIndex,
         isFlipped,

@@ -1,5 +1,5 @@
 import { SkipForward } from "lucide-react";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { HideWindow } from "../wailsjs/go/main/App";
 import { AllCardsDone } from "./components/AllCardsDone";
 import { AllCatchUp } from "./components/AllCatchUp";
@@ -47,14 +47,26 @@ const CardComponent: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
 
 
 const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
-    const { practiceAll, currentCardIndex } = useAppStateContext(); // Practice all words if none are due
-    const cats = countCardsByCurrentCategory(cards)
+    const { practiceAll, selectedDeckId, setSelectedDeckId, decks } = useAppStateContext();
+    const cats = countCardsByCurrentCategory(cards);
     return (
         <div className="flex items-center gap-2">
-            <span className="bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/30">
+            <select
+                value={selectedDeckId}
+                onChange={(e) => setSelectedDeckId(e.target.value)}
+                className="bg-slate-900/80 text-[11px] font-semibold text-slate-300 border border-slate-700/30 rounded-md px-1.5 py-0.5 outline-none hover:bg-slate-800 hover:border-slate-600 transition-colors cursor-pointer"
+            >
+                <option value="all" className="bg-slate-900 text-slate-300">All Decks</option>
+                {decks.map(deck => (
+                    <option key={deck.id} value={deck.id} className="bg-slate-900 text-slate-300">
+                        {deck.name}
+                    </option>
+                ))}
+            </select>
+            <span className="bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/30 shrink-0">
                 {practiceAll ? 'Practice stack' : 'Due stack'}
             </span>
-            <span className="text-slate-500">
+            <span className="text-slate-500 truncate">
                 <span className="text-red-500 mr-1">{cats.again}</span>
                 <span className="text-orange-500 mr-1">{cats.hard}</span>
                 <span className="text-blue-500 mr-1">{cats.good}</span>
@@ -65,18 +77,33 @@ const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
 };
 export const WordPage: React.FC = React.memo(() => {
 
-    const { flashcards, currentCardIndex, setCurrentCardIndex, isFlipped, setIsFlipped } = useAppStateContext();
+    const { flashcards, currentCardIndex, setCurrentCardIndex, isFlipped, setIsFlipped, selectedDeckId } = useAppStateContext();
     const { practiceAll, showToast } = useAppStateContext(); // Practice all words if none are due
+
+    const deckCards = useMemo(() => {
+        if (selectedDeckId === "all") {
+            return flashcards;
+        }
+        return flashcards.filter(c => {
+            const cardDecks = c.deckIds && c.deckIds.length > 0 ? c.deckIds : ["default"];
+            return cardDecks.includes(selectedDeckId);
+        });
+    }, [flashcards, selectedDeckId]);
+
     // Filter due cards or provide practice stack
     const nowMs = Date.now()+ popUpIntervals[popUpIntervals.length - 1]*60*1000; // subtract max pop-up interval from current time to include cards that will be due very soon, providing a smoother experience and allowing users to pre-review cards that are just about to come up. This also helps prevent situations where a card becomes due in the middle of a review session and is not included in the stack, which can be jarring for users.
     //dueCards ordered by nextReviewAt ascending, so the most urgent cards are first in the stack
-    const dueCards = flashcards.filter(c => (c.nextReviewAt || 0) <= nowMs).sort((a, b) => (a.nextReviewAt || 0) - (b.nextReviewAt || 0));
+    const dueCards = useMemo(() => {
+        return deckCards
+            .filter(c => (c.nextReviewAt || 0) <= nowMs)
+            .sort((a, b) => (a.nextReviewAt || 0) - (b.nextReviewAt || 0));
+    }, [deckCards, nowMs]);
     // console.log(`Total cards: ${flashcards.length}, Due cards: ${dueCards.length}, Practice all: ${practiceAll}`);
     // const _tmp = flashcards.sort((a, b) => (a.nextReviewAt || 0) - (b.nextReviewAt || 0)).map(c => ({ dutch: c.dutch, srsLevel: c.srsLevel, nextReviewAt: new Date(c.nextReviewAt) })); 
     // console.table(_tmp);
 
     // flashcards are shuffled randomly on load, so the dueCards order is randomized so when in practiceAll mode they are not in the same order every time
-    const activeCards = (practiceAll ? flashcards : dueCards)
+    const activeCards = (practiceAll ? deckCards : dueCards)
     //Due to SRS rescheduling in normal mode we show first _scheduled_ card, but in practiceAll mode we show first _random_ card, so we need to slice the array accordingly
     const activeCard = (practiceAll ? activeCards[currentCardIndex] : activeCards[0]) || null;
     useEffect(() => {
@@ -113,29 +140,31 @@ export const WordPage: React.FC = React.memo(() => {
 
     return (
         <div className="flex-1 flex flex-col justify-between animate-slide-up-fade">
+            {/* Top Bar with selector and words counter. Always visible! */}
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 px-1 mb-2">
+                <WordsCounter cards={activeCards} />
+
+                {practiceAll && activeCards.length > 0 && currentCardIndex < activeCards.length && (
+                    <button
+                        onClick={handleSkipWord}
+                        className="flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200 font-bold rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
+                        title="Skip this word"
+                    >
+                        <span>Skip</span>
+                        <SkipForward className="w-3.5 h-3.5 text-indigo-400" />
+                    </button>
+                )}
+            </div>
+
             {activeCards.length === 0 ? (
                 /* All caught up state */
-                <AllCatchUp totalCards={flashcards.length} />
-            ) : currentCardIndex > activeCards.length ? (
+                <AllCatchUp totalCards={deckCards.length} />
+            ) : currentCardIndex >= activeCards.length ? (
                 /* Review stack finished screen */
                 <AllCardsDone />
             ) : (
                 /* Interactive Flashcard */
                 <div className="flex-1 flex flex-col justify-between">
-                    {/* Progress Indicator */}
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 px-1 mb-2">
-                        <WordsCounter cards={activeCards} />
-
-                       {practiceAll && <button
-                            onClick={handleSkipWord}
-                            className="flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200 font-bold rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
-                            title="Skip this word"
-                        >
-                            <span>Skip</span>
-                            <SkipForward className="w-3.5 h-3.5 text-indigo-400" />
-                        </button>}
-                    </div>
-
                     {/* Slick 3D perspective wrapper with key for mounting animations */}
                     <div
                         key={activeCard.id}
