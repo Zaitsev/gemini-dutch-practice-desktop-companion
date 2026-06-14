@@ -45,7 +45,7 @@ const CardComponent: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
         }
 
         return <NormalCard activeCard={activeCard} />;
-    }, [activeCard.id, challengeMode, activeCard.srsLevel]);
+    }, [activeCard, challengeMode]);
 
     return renderedCard;
 };
