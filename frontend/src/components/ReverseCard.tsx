@@ -8,7 +8,7 @@ export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
 
     return (<>
-        <div className={`relative w-full h-full duration-500 transform-style-preserve-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
+        <div className={`relative w-full h-full duration-500 transform-style-preserve-3d transition-transform ${isFlipped ? 'rotate-y-180' : 'rotate-y-0'}`}>
 
             {/* Front (English word) */}
             <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">

@@ -27,11 +27,16 @@ html, body {
 
 .transform-style-preserve-3d {
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .backface-hidden {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-0 {
+  transform: rotateY(0deg);
 }
 
 .rotate-y-180 {
