@@ -34,6 +34,10 @@ export function GetDndStatus() {
   return window['go']['main']['App']['GetDndStatus']();
 }
 
+export function GetLaunchAtLoginStatus() {
+  return window['go']['main']['App']['GetLaunchAtLoginStatus']();
+}
+
 export function GetWords() {
   return window['go']['main']['App']['GetWords']();
 }
@@ -76,6 +80,10 @@ export function SaveWindowState() {
 
 export function SetDndMinutes(arg1) {
   return window['go']['main']['App']['SetDndMinutes'](arg1);
+}
+
+export function SetLaunchAtLogin(arg1) {
+  return window['go']['main']['App']['SetLaunchAtLogin'](arg1);
 }
 
 export function SetMChallengeMode(arg1) {

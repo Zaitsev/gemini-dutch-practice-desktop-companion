@@ -1,8 +1,7 @@
-import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
-import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
-import { WordDeckAssignments, WordDeckBadges } from "./WordDeckAssignments";
+import { PlayAudioUrl } from "./PlayAudioUrl";
+import { WordDeckBadges } from "./WordDeckAssignments";
 
 /** NormalCard component displays a single word card Dutch->English */
 export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {

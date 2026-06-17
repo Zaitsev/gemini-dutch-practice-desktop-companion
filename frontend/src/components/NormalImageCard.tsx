@@ -60,27 +60,26 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
         <div className={`relative w-full h-full duration-500 transform-style-preserve-3d transition-transform ${isFlipped ? 'rotate-y-180' : 'rotate-y-0'}`}>
 
             {/* Front (Dutch word) */}
-            <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
 
                 {/* Word Centerpiece */}
                 <div className="flex flex-col items-center gap-3">
                     <img src={randomExample.imageUrl} alt="Example" className="w-full h-full object-cover rounded-md shadow-md" />
-                    <h2 className="text-2xs  tracking-tight text-slate-100 select-text">
+                    <h2 className="text-xl  tracking-tight text-slate-100 select-text">
                         {randomExample.maskedSentence}
                     </h2>
 
                 </div>
 
                 {/* Flip Call-to-action */}
-                <div className="text-xs text-slate-500 flex items-center gap-1 opacity-70">
-                    <Eye className="w-3.5 h-3.5" />
+                <div className="text-xs text-slate-500">
                     Click card or press space to reveal definition
                 </div>
             </div>
 
             {/* Back (English + Context) */}
-            <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl p-5 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
 
 
                 {/* Translations Center */}
@@ -96,12 +95,12 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
                     </h2>
                     <Examples activeCard={activeCard} />
                 </div>
-                <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
+                <div className="flex flex-col  items-center gap-2 max-w-full max-h-screen px-2">
                     <WordDeckBadges activeCard={activeCard} />
                     {/* <WordDeckAssignments activeCard={activeCard} /> */}
                 </div>
                 {/* Flipback hint */}
-                <div className="text-xs text-slate-500 opacity-60">
+                <div className="text-xs text-slate-500">
                     Click to flip back
                 </div>
             </div>

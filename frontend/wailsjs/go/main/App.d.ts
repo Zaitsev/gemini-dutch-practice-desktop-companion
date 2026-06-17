@@ -18,6 +18,8 @@ export function GetDecks():Promise<Array<main.Deck>>;
 
 export function GetDndStatus():Promise<main.DndStatus>;
 
+export function GetLaunchAtLoginStatus():Promise<boolean>;
+
 export function GetWords():Promise<Array<main.Word>>;
 
 export function GetWordsAndDecks():Promise<main.WordsAndDecks>;
@@ -39,6 +41,8 @@ export function SaveInterval(arg1:number):Promise<boolean>;
 export function SaveWindowState():Promise<void>;
 
 export function SetDndMinutes(arg1:number):Promise<boolean>;
+
+export function SetLaunchAtLogin(arg1:boolean):Promise<boolean>;
 
 export function SetMChallengeMode(arg1:string):Promise<boolean>;
 

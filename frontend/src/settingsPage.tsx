@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from 'react';
 import {
     CreateDeck,
     DeleteDeck,
+    GetLaunchAtLoginStatus,
     Logout,
     RenameDeck,
     SaveInterval,
     SaveAutoHideOnAnswer,
+    SetLaunchAtLogin,
     SetMChallengeMode,
 } from "../wailsjs/go/main/App";
 import { useAppStateContext } from './provider';
@@ -43,6 +45,8 @@ export function SettingsPage() {
     const { config, setConfig, setFlashcards, setIsLoggedIn, showToast, handleTriggerManualCheck, decks, loadCards } = useAppStateContext();
     const [newDeckName, setNewDeckName] = useState("");
     const [deckNameDrafts, setDeckNameDrafts] = useState<Record<string, string>>({});
+    const [launchAtLoginEnabled, setLaunchAtLoginEnabled] = useState(false);
+    const [launchAtLoginLoading, setLaunchAtLoginLoading] = useState(true);
 
     useEffect(() => {
         setDeckNameDrafts((current) => {
@@ -56,6 +60,36 @@ export function SettingsPage() {
             return nextDrafts;
         });
     }, [decks]);
+
+    useEffect(() => {
+        let active = true;
+
+        // Implementation note: always read live OS startup artifact state, not config cache.
+        GetLaunchAtLoginStatus()
+            .then((enabled) => {
+                if (!active) {
+                    return;
+                }
+                setLaunchAtLoginEnabled(enabled);
+            })
+            .catch((error) => {
+                if (!active) {
+                    return;
+                }
+                console.error("Error loading launch-at-login status:", error);
+                showToast("Unable to read launch-at-login status.", "error");
+            })
+            .finally(() => {
+                if (!active) {
+                    return;
+                }
+                setLaunchAtLoginLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [showToast]);
 
     const handleSignOut = useCallback(async () => {
         try {
@@ -169,6 +203,24 @@ export function SettingsPage() {
             showToast(error instanceof Error ? error.message : "Error deleting deck.", "error");
         }
     }, [refreshDecksAndCards, showToast]);
+
+    const handleToggleLaunchAtLogin = useCallback(async (nextValue: boolean) => {
+        setLaunchAtLoginLoading(true);
+        try {
+            const success = await SetLaunchAtLogin(nextValue);
+            if (success) {
+                setLaunchAtLoginEnabled(nextValue);
+                showToast(nextValue ? "Launch at login enabled." : "Launch at login disabled.", "success");
+                return;
+            }
+            showToast("Failed to update launch-at-login setting.", "error");
+        } catch (error) {
+            console.error("Error updating launch-at-login:", error);
+            showToast("Error updating launch-at-login setting.", "error");
+        } finally {
+            setLaunchAtLoginLoading(false);
+        }
+    }, [showToast]);
 
     const profileInitials = getProfileInitials(config?.displayName, config?.email);
     const customDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID);
@@ -342,6 +394,26 @@ export function SettingsPage() {
 
 
 
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
+                    <div className="flex items-center gap-2 text-slate-200">
+                        <h3 className="text-xs font-bold">Launch at Login</h3>
+                        <input
+                            type="checkbox"
+                            checked={launchAtLoginEnabled}
+                            disabled={launchAtLoginLoading}
+                            onChange={(event) => {
+                                void handleToggleLaunchAtLogin(event.target.checked);
+                            }}
+                            className="w-4 h-4 rounded border-slate-700/50 text-sky-400 focus:ring-sky-400/30 disabled:opacity-50"
+                        />
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-normal">
+                        Add or remove this app from OS auto-start on demand. If you disable it manually in OS settings, it stays disabled until you enable it here again.
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-normal">
+                        Platform details: Windows uses the user Startup folder shortcut. macOS uses a LaunchAgent plist in ~/Library/LaunchAgents.
+                    </p>
                 </div>
                 {/* Manual trigger checklist operations */}
                 <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">

@@ -145,6 +145,25 @@ func (a *App) SaveAutoHideOnAnswer(autoHide bool) bool {
 	return true
 }
 
+// GetLaunchAtLoginStatus returns the live OS startup registration state.
+func (a *App) GetLaunchAtLoginStatus() (bool, error) {
+	enabled, err := IsLaunchAtLoginEnabled()
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "[Startup] Error checking launch-at-login status: %v", err)
+		return false, err
+	}
+	return enabled, nil
+}
+
+// SetLaunchAtLogin explicitly adds/removes OS startup registration.
+func (a *App) SetLaunchAtLogin(enable bool) (bool, error) {
+	if err := SetLaunchAtLoginEnabled(enable); err != nil {
+		runtime.LogErrorf(a.ctx, "[Startup] Error updating launch-at-login status: %v", err)
+		return false, err
+	}
+	return true, nil
+}
+
 // Login triggers the system browser loopback login
 func (a *App) Login() (*Config, error) {
 	a.configLock.Lock()
