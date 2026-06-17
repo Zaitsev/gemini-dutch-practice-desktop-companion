@@ -284,7 +284,7 @@ function App() {
 
   if (loading && flashcards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full w-full bg-[#0b0f19] text-slate-100">
+      <div className="layout-app-loading">
         <LoaderCircle className="w-10 h-10 text-sky-400 animate-spin mb-4" />
         <p className="text-slate-400 text-sm font-medium">Bootstrapping TaalGem...</p>
       </div>
@@ -292,12 +292,12 @@ function App() {
   }
 
   return (
-    <div tabIndex={0} className="flex flex-col h-full w-full bg-[#0b0f19] text-slate-100 overflow-hidden relative font-sans">
+    <div tabIndex={0} className="layout-app-shell">
       {/* Dynamic Toast System */}
       <Toast />
 
       {/* Modern Custom Drag Bar Header */}
-      <header className="h-14 flex items-center justify-between px-4 border-b border-slate-800/40 bg-slate-950/20 backdrop-blur-md relative z-40" style={{ ['--wails-draggable' as any]: 'drag' }}>
+      <header className="layout-app-header" style={{ ['--wails-draggable' as any]: 'drag' }}>
         <div className="flex items-center gap-2">
           <img src={logoSvg} alt="TaalGem Logo" className="w-7 h-7 object-contain drop-shadow" />
           <span className="font-bold text-sm bg-gradient-to-r from-sky-400 to-indigo-300 bg-clip-text text-transparent">TaalGem Companion</span>
@@ -374,12 +374,12 @@ function App() {
       </header>
 
       {/* Navigation Router Body */}
-      <main className={`flex-1 ${activeTab === 'reviews' && isLoggedIn ? 'overflow-hidden' : 'overflow-y-auto'} px-4 py-4 flex flex-col justify-start`}>
+      <main className={`layout-main-content ${activeTab === 'reviews' && isLoggedIn ? 'layout-main-content-locked' : 'layout-main-content-scroll'}`}>
         {!isLoggedIn ? (
           <LoginPage />
         ) : (
           /* Active Tabs Layout (Reviews vs Settings) */
-          <div className="flex-1 flex flex-col justify-start">
+          <div className="layout-page-content">
             {activeTab === 'reviews' ? (
               /* Flashcard Review Center */
               <WordPage />

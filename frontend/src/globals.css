@@ -1,0 +1,122 @@
+@layer utilities {
+  .layout-app-shell {
+    @apply flex flex-col h-full w-full bg-[#0b0f19] text-slate-100 overflow-hidden relative font-sans;
+  }
+
+  .layout-app-loading {
+    @apply flex flex-col items-center justify-center h-full w-full bg-[#0b0f19] text-slate-100;
+  }
+
+  .layout-app-header {
+    @apply h-14 flex items-center justify-between px-4 border-b border-slate-800/40 bg-slate-950/20 backdrop-blur-md relative z-40;
+  }
+
+  .layout-main-content {
+    @apply flex-1 px-4 py-4 flex flex-col justify-start;
+  }
+
+  .layout-main-content-scroll {
+    @apply overflow-y-auto;
+  }
+
+  .layout-main-content-locked {
+    @apply overflow-hidden;
+  }
+
+  .layout-page-content {
+    @apply flex-1 flex flex-col justify-start;
+  }
+
+  .layout-page-stack {
+    @apply flex-1 flex flex-col justify-between;
+    animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .layout-topbar {
+    @apply flex items-center justify-between text-[11px] font-semibold text-slate-400 px-1 mb-2;
+  }
+
+  .layout-card-stage {
+    @apply flex-1 flex flex-col justify-between;
+  }
+
+  .layout-card-footer {
+    @apply h-[90px] flex items-end justify-center;
+  }
+
+  .layout-grid-grades {
+    @apply w-full grid grid-cols-4 gap-2;
+  }
+
+  .layout-settings-stack {
+    @apply space-y-4;
+  }
+
+  .layout-settings-section {
+    @apply p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3;
+  }
+
+  .layout-settings-section-compact {
+    @apply p-3 rounded-xl bg-slate-900/35 border border-slate-800/30;
+  }
+
+  .layout-settings-header {
+    @apply flex items-center gap-2 text-slate-200;
+  }
+
+  .layout-settings-title {
+    @apply text-sm font-bold;
+  }
+
+  .layout-settings-title-compact {
+    @apply text-xs font-bold;
+  }
+
+  .layout-settings-icon {
+    @apply w-4 h-4;
+  }
+
+  .layout-settings-icon-lg {
+    @apply w-5 h-5;
+  }
+
+  .layout-settings-help {
+    @apply text-xs text-slate-400 leading-normal;
+  }
+
+  .layout-settings-help-compact {
+    @apply text-[10px] text-slate-400 leading-normal;
+  }
+
+  .layout-settings-help-muted {
+    @apply text-[10px] text-slate-500 leading-normal;
+  }
+
+  .layout-settings-content-stack {
+    @apply flex flex-col gap-2;
+  }
+
+  .layout-settings-content-row {
+    @apply flex gap-2;
+  }
+
+  .layout-settings-option-row {
+    @apply flex gap-2 justify-center w-full;
+  }
+
+  .layout-settings-option-grid {
+    @apply grid grid-cols-4 gap-2 pt-1;
+  }
+
+  .layout-feature-row {
+    @apply flex gap-3 items-start p-3 rounded-xl bg-slate-900/35 border border-slate-800/30;
+  }
+
+  .layout-center-state {
+    @apply flex-1 flex flex-col items-center justify-center text-center p-4;
+  }
+
+  .layout-center-actions {
+    @apply mt-8 flex flex-col gap-2 w-full;
+  }
+}

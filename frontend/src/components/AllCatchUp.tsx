@@ -4,7 +4,7 @@ import { useAppStateContext } from "../provider";
 export const AllCatchUp: React.FC<{ totalCards: number }> = ({ totalCards }) => {
         const { handleTriggerManualCheck, setPracticeAll, setCurrentCardIndex, setIsFlipped } = useAppStateContext();
     return(<>
-             <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+             <div className="layout-center-state">
                     <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5 text-emerald-400 shadow-lg shadow-emerald-500/5 animate-pulse">
                         <CheckCircle className="w-8 h-8" />
                     </div>
@@ -13,7 +13,7 @@ export const AllCatchUp: React.FC<{ totalCards: number }> = ({ totalCards }) => 
                         You are completely caught up on your Dutch flashcards. Awesome job!
                     </p>
 
-                    <div className="mt-8 flex flex-col gap-2 w-full max-w-[240px]">
+                    <div className="layout-center-actions max-w-[240px]">
                         {totalCards > 0 && (
                             <button
                                 onClick={() => {

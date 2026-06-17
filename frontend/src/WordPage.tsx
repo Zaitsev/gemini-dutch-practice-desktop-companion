@@ -144,9 +144,9 @@ export const WordPage: React.FC = React.memo(() => {
     }, [activeCard, currentCardIndex, activeCards, showToast]);
 
     return (
-        <div className="flex-1 flex flex-col justify-between animate-slide-up-fade">
+        <div className="layout-page-stack">
             {/* Top Bar with selector and words counter. Always visible! */}
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 px-1 mb-2">
+            <div className="layout-topbar">
                 <WordsCounter cards={activeCards} />
 
                 {practiceAll && activeCards.length > 0 && currentCardIndex < activeCards.length && (
@@ -169,7 +169,7 @@ export const WordPage: React.FC = React.memo(() => {
                 <AllCardsDone />
             ) : (
                 /* Interactive Flashcard */
-                <div className="flex-1 flex flex-col justify-between">
+                <div className="layout-card-stage">
                     {/* Slick 3D perspective wrapper with key for mounting animations */}
                     <div
                         key={activeCard.id}
@@ -181,7 +181,7 @@ export const WordPage: React.FC = React.memo(() => {
                     </div>
 
                     {/* Grading / Answer Controls Footer */}
-                    <div className="h-[90px] flex items-end justify-center">
+                    <div className="layout-card-footer">
                         {!isFlipped ? null : (
                             /* Premium HSL-Themed SRS Grading Buttons */
                             <AnswerControls activeCard={activeCard} totalCards={activeCards.length} />

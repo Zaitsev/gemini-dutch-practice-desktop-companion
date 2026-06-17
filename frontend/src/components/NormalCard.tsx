@@ -11,7 +11,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
         <div className={`relative w-full h-full duration-500 transform-style-preserve-3d transition-transform ${isFlipped ? 'rotate-y-180' : 'rotate-y-0'}`}>
 
             {/* Front (Dutch word) */}
-            <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl  px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
                 <div className="w-full flex justify-between items-center text-xs text-slate-500">
                     <span className="uppercase tracking-widest font-bold text-sky-400/80">Dutch</span>
@@ -34,7 +34,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
             </div>
 
             {/* Back (English + Context) */}
-            <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl p-5 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl px-6 pt-6 pb-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
        
 

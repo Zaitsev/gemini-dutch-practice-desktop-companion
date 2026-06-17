@@ -7,7 +7,7 @@ export const AllCardsDone: React.FC = () => {
     const { config, setCurrentCardIndex, setIsFlipped } = useAppStateContext();
     const { setPracticeAll } = useAppStateContext(); // Practice all words if none are due
     return (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+        <div className="layout-center-state">
             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 to-amber-500 flex items-center justify-center mb-5 text-slate-950 shadow-lg shadow-yellow-500/10 animate-bounce">
                 <Sparkles className="w-8 h-8" />
             </div>
@@ -16,7 +16,7 @@ export const AllCardsDone: React.FC = () => {
                 You have reviewed al due cards in this batch. Excellent progress.
             </p>
 
-            <div className="mt-8 flex flex-col gap-2 w-full max-w-[220px]">
+            <div className="layout-center-actions max-w-[220px]">
                 <button
                     onClick={() => {
                         setPracticeAll(false);

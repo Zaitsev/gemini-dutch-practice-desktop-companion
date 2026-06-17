@@ -1,4 +1,4 @@
-import { Bell, Clock, IdCardIcon, LogOut, LucideCloudSync, LucideFileStack, LucideFolderSync, LucideWalletCards, RotateCw, User } from 'lucide-react';
+import { Bell, Clock, IdCardIcon, LogOut, LucideCloudSync, LucideEye, LucideFileStack, LucideFolderSync, LucideRocket, LucideWalletCards, RotateCw, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
     CreateDeck,
@@ -227,11 +227,11 @@ export function SettingsPage() {
 
 
     return (
-        <div className="flex-1 flex flex-col justify-between animate-slide-up-fade">
-            <div className="space-y-4">
+        <div className="layout-page-stack">
+            <div className="layout-settings-stack">
                 {/* Google Authenticated User profile badge */}
                 {config && (
-                    <div className="p-3 rounded-xl bg-slate-900/35 border border-slate-800/30 flex items-center gap-3">
+                    <div className="layout-settings-section-compact flex items-center gap-3">
                         {config.photoURL ? (
                             <img src={config.photoURL} alt="Profile" className="w-10 h-10 rounded-full border border-slate-700/50 shadow" />
                         ) : (
@@ -249,18 +249,18 @@ export function SettingsPage() {
                         </div>
                     </div>
                 )}
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <LucideFileStack className="w-4 h-4 text-sky-400" />
-                        <h3 className="text-sm font-bold">Decks</h3>
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <LucideFileStack className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title">Decks</h3>
                     </div>
 
-                    <p className="text-xs text-slate-400 leading-normal">
+                    <p className="layout-settings-help">
                         The default deck is protected. Create, rename, and delete custom decks here.
                     </p>
 
-                    <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
+                    <div className="layout-settings-content-stack">
+                        <div className="layout-settings-content-row">
                             <input
                                 value={newDeckName}
                                 onChange={(event) => setNewDeckName(event.target.value)}
@@ -276,10 +276,9 @@ export function SettingsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between rounded-lg border border-slate-800/50 bg-slate-950/35 px-3 py-2">
+                            <div className="flex items-center justify-between rounded-lg border border-slate-800/50 bg-slate-950/35 px-6 py-2">
                                 <div>
-                                    <p className="text-base font-semibold text-slate-100">{DEFAULT_DECK_LABEL}</p>
-                                    <p className="text-xs text-slate-500">Always available and cannot be removed.</p>
+                                    <p className="text-xs font-semibold text-slate-100">{DEFAULT_DECK_LABEL}</p>
                                 </div>
                                 <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Locked</span>
                             </div>
@@ -311,15 +310,15 @@ export function SettingsPage() {
                     </div>
                 </div>
                 {/* Challenge Mode */}
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <IdCardIcon className="w-4 h-4 text-sky-400" />
-                        <h3 className="text-sm font-bold">Cards Mode</h3>
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <IdCardIcon className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title">Cards Mode</h3>
                     </div>
-                    <p className="text-xs text-slate-400 leading-normal">
+                    <p className="layout-settings-help">
                         Cards mode: normal : Dutch &rarr;Translation, reverse : Translation &rarr; Dutch, mixed : Random variant for each card.
                     </p>
-                    <div className="flex gap-2 justify-center w-full">
+                    <div className="layout-settings-option-row">
                         {["normal", "reverse", "mixed"].map(mode => {
                             const active = config?.challengeMode || 'normal';
                             return (
@@ -340,17 +339,17 @@ export function SettingsPage() {
 
                 </div>
                 {/* Timing presets dropdown section */}
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <Clock className="w-4 h-4 text-sky-400" />
-                        <h3 className="text-sm font-bold">Popup Timer Frequency</h3>
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <Clock className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title">Popup Timer Frequency</h3>
                     </div>
 
-                    <p className="text-xs text-slate-400 leading-normal">
+                    <p className="layout-settings-help">
                         Customize how often the background system checks for reviews and slides open notifications.
                     </p>
 
-                    <div className="grid grid-cols-4 gap-2 pt-1">
+                    <div className="layout-settings-option-grid">
                         {popUpIntervals.map((mins) => {
                             const active = config?.intervalMinutes === mins;
                             return (
@@ -368,61 +367,76 @@ export function SettingsPage() {
                         })}
                     </div>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <h3 className="text-xs font-bold">Auto-Hide on Answer</h3>
-                        <input type="checkbox" checked={config?.autoHideOnAnswer || false} onChange={async (e) => {
-                            const newValue = e.target.checked;
-                            try {
-                                const success = await SaveAutoHideOnAnswer(newValue);
-                                if (success) {
-                                    setConfig(prev => prev ? { ...prev, autoHideOnAnswer: newValue } : null);
-                                } else {
-                                    showToast("Failed to update Auto-Hide setting.", "error");
-                                }
-                            } catch (err) {
-                                console.error("Error updating Auto-Hide setting:", err);
-                                showToast("Error updating Auto-Hide setting.", "error");
-                            }
-                        }} className="w-4 h-4 rounded border-slate-700/50 text-sky-400 focus:ring-sky-400/30" />
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <LucideEye className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title-compact"> Auto-Hide on Answer</h3>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={config?.autoHideOnAnswer || false}
+                                onChange={async (e) => {
+                                    const newValue = e.target.checked;
+                                    try {
+                                        const success = await SaveAutoHideOnAnswer(newValue);
+                                        if (success) {
+                                            setConfig(prev => prev ? { ...prev, autoHideOnAnswer: newValue } : null);
+                                        } else {
+                                            showToast("Failed to update Auto-Hide setting.", "error");
+                                        }
+                                    } catch (err) {
+                                        console.error("Error updating Auto-Hide setting:", err);
+                                        showToast("Error updating Auto-Hide setting.", "error");
+                                    }
+                                }}
+                                className="peer sr-only"
+                                aria-label="Toggle auto-hide on answer"
+                            />
+                            <span className="relative h-6 w-11 rounded-full border border-slate-700/70 bg-slate-900/70 transition-colors duration-200 peer-checked:bg-sky-500/30 peer-checked:border-sky-400/60 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-slate-950 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-slate-200 after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
+                        </label>
 
 
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-normal">
+                    <p className="layout-settings-help-compact">
                         Automatically hide window on answer.
                     </p>
 
 
 
                 </div>
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <h3 className="text-xs font-bold">Launch at Login</h3>
-                        <input
-                            type="checkbox"
-                            checked={launchAtLoginEnabled}
-                            disabled={launchAtLoginLoading}
-                            onChange={(event) => {
-                                void handleToggleLaunchAtLogin(event.target.checked);
-                            }}
-                            className="w-4 h-4 rounded border-slate-700/50 text-sky-400 focus:ring-sky-400/30 disabled:opacity-50"
-                        />
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <LucideRocket className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title-compact">Launch at Login</h3>
+                        <label className={`relative inline-flex items-center ${launchAtLoginLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                            <input
+                                type="checkbox"
+                                checked={launchAtLoginEnabled}
+                                disabled={launchAtLoginLoading}
+                                onChange={(event) => {
+                                    void handleToggleLaunchAtLogin(event.target.checked);
+                                }}
+                                className="peer sr-only"
+                                aria-label="Toggle launch at login"
+                            />
+                            <span className="relative h-6 w-11 rounded-full border border-slate-700/70 bg-slate-900/70 transition-colors duration-200 peer-checked:bg-sky-500/30 peer-checked:border-sky-400/60 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-slate-950 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-slate-200 after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
+                        </label>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-normal">
+                    <p className="layout-settings-help-compact">
                         Add or remove this app from OS auto-start on demand. If you disable it manually in OS settings, it stays disabled until you enable it here again.
                     </p>
-                    <p className="text-[10px] text-slate-500 leading-normal">
+                    <p className="layout-settings-help-muted">
                         Platform details: Windows uses the user Startup folder shortcut. macOS uses a LaunchAgent plist in ~/Library/LaunchAgents.
                     </p>
                 </div>
                 {/* Manual trigger checklist operations */}
-                <div className="p-4 rounded-xl bg-slate-900/35 border border-slate-800/30 space-y-3">
-                    <div className="flex items-center gap-2 text-slate-200">
-                        <LucideCloudSync className="w-5 h-5 text-indigo-400" />
-                        <h3 className="text-sm font-bold">Synchronization</h3>
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <LucideCloudSync className="layout-settings-icon-lg text-indigo-400" />
+                        <h3 className="layout-settings-title">Synchronization</h3>
                     </div>
 
-                    <p className="text-xs text-slate-400 leading-normal">
+                    <p className="layout-settings-help">
                         Synchronize data with the main app database.
                     </p>
 

@@ -28,7 +28,7 @@ export const LoginPage: React.FC = React.memo(() => {
     /* Sleek Glassmorphism Unauthenticated View */
 
 
-    return (<div className="flex-1 flex flex-col justify-between py-2 animate-slide-up-fade">
+    return (<div className="layout-page-stack py-2">
         <div className="text-center mt-4">
             <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight leading-tight">
                 Master Your Dutch Words
@@ -40,7 +40,7 @@ export const LoginPage: React.FC = React.memo(() => {
 
         {/* Custom Features Grid */}
         <div className="my-5 space-y-3 px-2">
-            <div className="flex gap-3 items-start p-3 rounded-xl bg-slate-900/35 border border-slate-800/30">
+            <div className="layout-feature-row">
                 <div className="p-1.5 bg-sky-500/10 rounded-lg text-sky-400 mt-0.5">
                     <Clock className="w-4 h-4" />
                 </div>
@@ -50,7 +50,7 @@ export const LoginPage: React.FC = React.memo(() => {
                 </div>
             </div>
 
-            <div className="flex gap-3 items-start p-3 rounded-xl bg-slate-900/35 border border-slate-800/30">
+            <div className="layout-feature-row">
                 <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400 mt-0.5">
                     <BookOpen className="w-4 h-4" />
                 </div>

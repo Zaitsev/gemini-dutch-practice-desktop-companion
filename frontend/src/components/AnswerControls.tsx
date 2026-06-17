@@ -101,7 +101,7 @@ export const AnswerControls: React.FC<{
 
 
     return (<>
-        <div className="w-full grid grid-cols-4 gap-2 animate-slide-up-fade">
+        <div className="layout-grid-grades animate-slide-up-fade">
             <button
                 disabled={savingSrs}
                 onClick={() => handleGradeWord('again')}
