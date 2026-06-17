@@ -2,7 +2,7 @@ import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
-import { WordDeckAssignments } from "./WordDeckAssignments";
+import { WordDeckAssignments, WordDeckBadges } from "./WordDeckAssignments";
 /** ReverseCard component displays a single word card English->Dutch */
 export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
@@ -13,7 +13,7 @@ export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
             {/* Front (English word) */}
             <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
-                <div className="w-full flex justify-between items-center text-[10px] text-slate-500">
+                <div className="w-full flex justify-between items-center text-xs text-slate-500">
                     <span className="uppercase tracking-widest font-bold text-sky-400/80">Translation</span>
                 </div>
 
@@ -26,7 +26,7 @@ export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                 </div>
 
                 {/* Flip Call-to-action */}
-                <div className="text-[10px] text-slate-500 flex items-center gap-1 opacity-70">
+                <div className="text-xs text-slate-500 flex items-center gap-1 opacity-70">
                     <Eye className="w-3.5 h-3.5" />
                     Click card or press space to reveal definition
                 </div>
@@ -48,11 +48,13 @@ export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                         {activeCard.english}
                     </h2>
                     <Examples activeCard={activeCard} />
-                    <WordDeckAssignments activeCard={activeCard} />
+                    <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
+                        <WordDeckBadges activeCard={activeCard} />
+                    </div>
                 </div>
 
                 {/* Flipback hint */}
-                <div className="text-[9px] text-slate-500 opacity-60">
+                <div className="text-xs text-slate-500 opacity-60">
                     Click to flip back
                 </div>
             </div>

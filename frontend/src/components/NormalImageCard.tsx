@@ -4,6 +4,7 @@ import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
 import { NormalCard } from "./NormalCard";
+import { WordDeckBadges } from "./WordDeckAssignments";
 
 
 /** struct of Image variants: 
@@ -27,7 +28,7 @@ function getRandomExampleWithImage(examples: Word['examples']): { imageUrl: stri
     if (!examples || examples.length === 0) {
         return null;
     }
-    const examplesWithImages = examples.filter(ex =>   ex.mapValue?.fields?.imageVariants?.mapValue?.fields?.medium?.stringValue);
+    const examplesWithImages = examples.filter(ex => ex.mapValue?.fields?.imageVariants?.mapValue?.fields?.medium?.stringValue);
     if (!examplesWithImages.length) {
         return null;
     }
@@ -43,7 +44,7 @@ function getRandomExampleWithImage(examples: Word['examples']): { imageUrl: stri
     return { imageUrl, maskedSentence };
 }
 
-/** NormalImageCard component displays a single word card Dutch->English, prioritizing examples with images if available */     
+/** NormalImageCard component displays a single word card Dutch->English, prioritizing examples with images if available */
 
 /** NormalImageCard component displays a single word card Dutch->English */
 export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
@@ -72,7 +73,7 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
                 </div>
 
                 {/* Flip Call-to-action */}
-                <div className="text-[10px] text-slate-500 flex items-center gap-1 opacity-70">
+                <div className="text-xs text-slate-500 flex items-center gap-1 opacity-70">
                     <Eye className="w-3.5 h-3.5" />
                     Click card or press space to reveal definition
                 </div>
@@ -93,11 +94,14 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
                     <h2 className="text-3xl font-normal tracking-tight text-indigo-300 select-text leading-snug">
                         {activeCard.english}
                     </h2>
-                     <Examples activeCard={activeCard} />
+                    <Examples activeCard={activeCard} />
                 </div>
-
+                <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
+                    <WordDeckBadges activeCard={activeCard} />
+                    {/* <WordDeckAssignments activeCard={activeCard} /> */}
+                </div>
                 {/* Flipback hint */}
-                <div className="text-[9px] text-slate-500 opacity-60">
+                <div className="text-xs text-slate-500 opacity-60">
                     Click to flip back
                 </div>
             </div>

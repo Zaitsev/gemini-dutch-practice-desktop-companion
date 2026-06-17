@@ -14,7 +14,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
             {/* Front (Dutch word) */}
             <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
-                <div className="w-full flex justify-between items-center text-[10px] text-slate-500">
+                <div className="w-full flex justify-between items-center text-xs text-slate-500">
                     <span className="uppercase tracking-widest font-bold text-sky-400/80">Dutch</span>
                 </div>
 
@@ -29,8 +29,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                 </div>
 
                 {/* Flip Call-to-action */}
-                <div className="text-[10px] text-slate-500 flex items-center gap-1 opacity-70">
-                    <Eye className="w-3.5 h-3.5" />
+                <div className="text-xs text-slate-500 flex items-center gap-1 opacity-70">
                     Click card or press space to reveal definition
                 </div>
             </div>
@@ -38,9 +37,7 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
             {/* Back (English + Context) */}
             <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl p-5 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
                 {/* Mini info row */}
-                <div className="absolute z-10 top-3 px-4 text-xs w-full flex gap-2 justify-end items-center text-slate-500">
-                    <WordDeckBadges activeCard={activeCard} />
-                </div>
+       
 
                 {/* Translations Center */}
                 <div className="py-4 min-h-full flex flex-col items-center justify-between gap-2 max-w-full max-h-screen px-2">
@@ -58,9 +55,9 @@ export const NormalCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
                     <div>
                         <Examples activeCard={activeCard} />
                     </div>
-                    <div className="w-full">
-
-                        <WordDeckAssignments activeCard={activeCard} />
+                    <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
+                        <WordDeckBadges activeCard={activeCard} />
+                        {/* <WordDeckAssignments activeCard={activeCard} /> */}
                     </div>
        
                 </div>
