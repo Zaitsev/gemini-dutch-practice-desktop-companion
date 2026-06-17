@@ -7,7 +7,7 @@ import { AnswerControls } from "./components/AnswerControls";
 import { NormalCard } from "./components/NormalCard";
 import { NormalImageCard } from "./components/NormalImageCard";
 import { ReverseCard } from "./components/ReverseCard";
-import { MAX_SRS_LEVEL, MIN_SRS_LEVEL, popUpIntervals, srsIntervalsMinutes, type ChallengeMode, type SRSRating } from "./const";
+import { popUpIntervals, type ChallengeMode } from "./const";
 import { useAppStateContext, type Word } from "./provider";
 import { countCardsByCurrentCategory } from "./utils";
 /** local replica of updateWordSrsData in gemini-dutch-practice\store\dictionarySlice.ts 
