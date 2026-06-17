@@ -1,8 +1,8 @@
 import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
-import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
-import { WordDeckAssignments, WordDeckBadges } from "./WordDeckAssignments";
+import { PlayAudioUrl } from "./PlayAudioUrl";
+import { WordDeckBadges } from "./WordDeckAssignments";
 /** ReverseCard component displays a single word card English->Dutch */
 export const ReverseCard: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
     const { isFlipped } = useAppStateContext();
