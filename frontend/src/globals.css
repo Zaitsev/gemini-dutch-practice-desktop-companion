@@ -119,4 +119,71 @@
   .layout-center-actions {
     @apply mt-8 flex flex-col gap-2 w-full;
   }
+
+  .layout-flip-card-root {
+    @apply relative w-full h-full duration-500 transition-transform;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  .layout-flip-card-face {
+    @apply absolute w-full h-full rounded-2xl px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .layout-flip-card-face-back {
+    @apply absolute w-full h-full rounded-2xl px-6 pt-6 pb-6 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: rotateY(180deg);
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .layout-card-mini-row {
+    @apply w-full flex justify-between items-center text-xs text-slate-500;
+  }
+
+  .layout-card-mini-label {
+    @apply uppercase tracking-widest font-bold text-sky-400/80;
+  }
+
+  .layout-card-front-center {
+    @apply flex flex-col items-center gap-3;
+  }
+
+  .layout-card-front-word {
+    @apply text-4xl tracking-tight text-slate-100 select-text;
+  }
+
+  .layout-card-cta {
+    @apply text-xs text-slate-500 flex items-center gap-1 opacity-70;
+  }
+
+  .layout-card-back-content {
+    @apply py-4 min-h-full flex flex-col items-center justify-between gap-2 max-w-full max-h-screen px-2;
+  }
+
+  .layout-card-back-primary {
+    @apply text-3xl font-normal tracking-tight text-slate-100 select-text;
+  }
+
+  .layout-card-back-secondary {
+    @apply text-3xl font-normal tracking-tight text-indigo-300 select-text leading-snug;
+  }
+
+  .layout-card-badges {
+    @apply flex flex-col items-center gap-2 max-w-full max-h-screen px-2;
+  }
+
+  .layout-card-flipback {
+    @apply text-xs text-slate-500;
+  }
 }

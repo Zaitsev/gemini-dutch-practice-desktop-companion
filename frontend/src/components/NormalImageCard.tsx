@@ -57,14 +57,14 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
         return <NormalCard activeCard={activeCard} />;
     }
     return (<>
-        <div className={`relative w-full h-full duration-500 transform-style-preserve-3d transition-transform ${isFlipped ? 'rotate-y-180' : 'rotate-y-0'}`}>
+        <div className={`layout-flip-card-root ${isFlipped ? 'rotate-y-180' : 'rotate-y-0'}`}>
 
             {/* Front (Dutch word) */}
-            <div className="absolute w-full h-full backface-hidden glass-card rounded-2xl px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="layout-flip-card-face">
                 {/* Mini info row */}
 
                 {/* Word Centerpiece */}
-                <div className="flex flex-col items-center gap-3">
+                <div className="layout-card-front-center">
                     <img src={randomExample.imageUrl} alt="Example" className="w-full h-full object-cover rounded-md shadow-md" />
                     <h2 className="text-xl  tracking-tight text-slate-100 select-text">
                         {randomExample.maskedSentence}
@@ -73,34 +73,34 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
                 </div>
 
                 {/* Flip Call-to-action */}
-                <div className="text-xs text-slate-500">
+                <div className="layout-card-cta">
                     Click card or press space to reveal definition
                 </div>
             </div>
 
             {/* Back (English + Context) */}
-            <div className="absolute w-full h-full backface-hidden rotate-y-180 glass-card rounded-2xl px-6 pt-6 pb-1 flex flex-col justify-between items-center text-center shadow-lg border border-slate-700/50">
+            <div className="layout-flip-card-face-back">
 
 
                 {/* Translations Center */}
-                <div className="flex flex-col items-center gap-2 max-w-full max-h-screen px-2">
-                    <h4 className="text-3xl font-normal tracking-tight text-slate-100 select-text">
+                <div className="layout-card-back-content">
+                    <h4 className="layout-card-back-primary">
                         {activeCard.dutch}
                     </h4>
                     <div className="relative">
                         <PlayAudioUrl activeCard={activeCard} />
                     </div>
-                    <h2 className="text-3xl font-normal tracking-tight text-indigo-300 select-text leading-snug">
+                    <h2 className="layout-card-back-secondary">
                         {activeCard.english}
                     </h2>
                     <Examples activeCard={activeCard} />
-                </div>
-                <div className="flex flex-col  items-center gap-2 max-w-full max-h-screen px-2">
-                    <WordDeckBadges activeCard={activeCard} />
-                    {/* <WordDeckAssignments activeCard={activeCard} /> */}
+                    <div className="layout-card-badges">
+                        <WordDeckBadges activeCard={activeCard} />
+                        {/* <WordDeckAssignments activeCard={activeCard} /> */}
+                    </div>
                 </div>
                 {/* Flipback hint */}
-                <div className="text-xs text-slate-500">
+                <div className="layout-card-flipback">
                     Click to flip back
                 </div>
             </div>
