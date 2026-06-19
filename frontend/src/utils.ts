@@ -1,4 +1,4 @@
-import { MAX_SRS_LEVEL, MIN_SRS_LEVEL, popUpIntervals, srsIntervalsMinutes, type SRSRating } from "./const";
+import { DEFAULT_DECK_ID, MAX_SRS_LEVEL, MIN_SRS_LEVEL, popUpIntervals, srsIntervalsMinutes, type SRSRating } from "./const";
 import type { Word } from "./provider";
 
 export type AnswerKind = 'Again' | 'Hard' | 'Good' | 'Easy';
@@ -86,4 +86,18 @@ export function getColorBySrsLevel(level: number): string {
     if (level <= 3) return 'border border-orange-500/20 text-orange-500';
     if (level <= 5) return 'border border-blue-500/20 text-blue-500';
     return 'border border-green-500/20 text-green-500';
+}
+
+
+export function dockeCounts(flashcards: Word[]): Record<string, number> {
+        const deckCounts = flashcards.reduce((acc, card) => {
+        const cardDeckIds = card.deckIds?.length ? card.deckIds : [DEFAULT_DECK_ID];
+
+        cardDeckIds.forEach((deckId) => {
+            acc[deckId] = (acc[deckId] ?? 0) + 1;
+        });
+
+        return acc;
+    }, {} as Record<string, number>);
+    return deckCounts;
 }

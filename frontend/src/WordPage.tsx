@@ -9,7 +9,7 @@ import { NormalImageCard } from "./components/NormalImageCard";
 import { ReverseCard } from "./components/ReverseCard";
 import { popUpIntervals, type ChallengeMode } from "./const";
 import { useAppStateContext, type Word } from "./provider";
-import { countCardsByCurrentCategory } from "./utils";
+import { countCardsByCurrentCategory, dockeCounts } from "./utils";
 /** local replica of updateWordSrsData in gemini-dutch-practice\store\dictionarySlice.ts 
  * 
 */
@@ -52,9 +52,10 @@ const CardComponent: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
 
 
 const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
-    const { practiceAll, selectedDeckId, setSelectedDeckId, decks } = useAppStateContext();
+    const { practiceAll, selectedDeckId, setSelectedDeckId, decks ,flashcards} = useAppStateContext();
     const cats = countCardsByCurrentCategory(cards);
-    return (
+        const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
+        return (
         <div className="flex items-center gap-2">
             <select
                 value={selectedDeckId}
@@ -64,7 +65,7 @@ const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
                 <option value="all" className="bg-slate-900 text-slate-300">All Decks</option>
                 {decks.map(deck => (
                     <option key={deck.id} value={deck.id} className="bg-slate-900 text-slate-300">
-                        {deck.name}
+                        {deck.name} {deckCounts[deck.id] > 0 ? `| ${deckCounts[deck.id]}` : null}
                     </option>
                 ))}
             </select>

@@ -1,14 +1,15 @@
 import { Check, Lock, LucideChevronDown, LucideChevronUp, LucideEdit2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { SetWordDeckIds } from "../../wailsjs/go/main/App";
 import { useAppStateContext, type Deck, type Word } from "../provider";
+import { DEFAULT_DECK_ID, DEFAULT_DECK_LABEL } from "../const";
+import { dockeCounts } from "../utils";
 
-const DEFAULT_DECK_ID = "default";
-const DEFAULT_DECK_LABEL = "Default";
+
 
 
 export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCard }) => {
-    const { decks, setFlashcards, showToast } = useAppStateContext();
+    const { decks, setFlashcards, showToast,flashcards } = useAppStateContext();
     const assignedDeckIds = activeCard?.deckIds?.length ? activeCard.deckIds : [DEFAULT_DECK_ID];
     const customDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID);
     const handleToggleDeck = useCallback(async (event: React.MouseEvent, deck: Deck) => {
@@ -49,14 +50,15 @@ export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCa
     if (!activeCard) {
         return null;
     }
-    const wordDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID && assignedDeckIds.includes(deck.id));
+    const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
+
     return (
         <>
             <div className="flex items-center justify-between gap-3 cursor-pointer text-xs ">
                 {assignedDeckIds.length === 1 && (
                     <span className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full  border  border-sky-500/30 text-sky-500">
                          <Check className="w-3 h-3" />
-                        {DEFAULT_DECK_LABEL}
+                        {DEFAULT_DECK_LABEL} {deckCounts[DEFAULT_DECK_ID] > 0 ? `| ${deckCounts[DEFAULT_DECK_ID]}` : null}
                     </span>
                 )}
                 {customDecks.map((deck) => {
@@ -69,7 +71,7 @@ export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCa
                             className={`cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full  border  ${clss}`}
                         >
                             {active ? <Check className="w-3 h-3" /> : null}
-                            {deck.name}
+                            {deck.name} {deckCounts[deck.id] > 0 ? `| ${deckCounts[deck.id]}` : null}
                         </span>
                     );
                 })}

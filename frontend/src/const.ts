@@ -18,3 +18,5 @@ export interface Config {
 }
 export const APP_VERSION = version;
 export const popUpIntervals = [15, 30, 60, 120]; // in minutes, for each rating category (again, hard, good, easy)
+export const DEFAULT_DECK_ID = "default";
+export const DEFAULT_DECK_LABEL = "Default";

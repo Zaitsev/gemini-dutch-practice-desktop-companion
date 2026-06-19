@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Eye } from "lucide-react";
 import { useAppStateContext, type Word } from "../provider";
 import { PlayAudioUrl } from "./PlayAudioUrl";
 import { Examples } from "./Examples";
@@ -64,9 +63,11 @@ export const NormalImageCard: React.FC<{ activeCard: Word }> = ({ activeCard }) 
                 {/* Mini info row */}
 
                 {/* Word Centerpiece */}
-                <div className="layout-card-front-center">
-                    <img src={randomExample.imageUrl} alt="Example" className="w-full h-full object-cover rounded-md shadow-md" />
-                    <h2 className="text-xl  tracking-tight text-slate-100 select-text">
+                <div className="layout-card-front-center w-full flex-1 min-h-0 gap-2">
+                    <div className="w-full flex-1 min-h-0">
+                        <img src={randomExample.imageUrl} alt="Example" className="w-full h-full object-contain rounded-md shadow-md" />
+                    </div>
+                    <h2 className="text-lg tracking-tight text-slate-100 select-text leading-snug">
                         {randomExample.maskedSentence}
                     </h2>
 
