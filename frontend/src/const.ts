@@ -13,7 +13,7 @@ export interface Config {
     email: string;
     photoURL: string;
     useEmulator: boolean;
-    autoHideOnAnswer: boolean;
+    autoHideAfterCards: number;
     challengeMode: string;
 }
 export const APP_VERSION = version;

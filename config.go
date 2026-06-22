@@ -7,23 +7,33 @@ import (
 )
 
 type Config struct {
-	IntervalMinutes    int    `json:"intervalMinutes"`
-	IdToken            string `json:"idToken"`
-	RefreshToken       string `json:"refreshToken"`
-	Uid                string `json:"uid"`
-	DisplayName        string `json:"displayName"`
-	Email              string `json:"email"`
-	PhotoURL           string `json:"photoURL"`
-	UseEmulator        bool   `json:"useEmulator"`
-	WindowX            int    `json:"windowX"`
-	WindowY            int    `json:"windowY"`
-	WindowW            int    `json:"windowW"`
-	WindowH            int    `json:"windowH"`
-	WindowPositionSaved bool  `json:"windowPositionSaved"`
-	DndEndTimestamp    int64  `json:"dndEndTimestamp"`
-	DndDurationMinutes int    `json:"dndDurationMinutes"`
-	AutoHideOnAnswer   bool    `json:"autoHideOnAnswer"`
-	ChallengeMode				string  `json:"challengeMode"` // "normal", "reverse", "mixed"
+	IntervalMinutes     int    `json:"intervalMinutes"`
+	IdToken             string `json:"idToken"`
+	RefreshToken        string `json:"refreshToken"`
+	Uid                 string `json:"uid"`
+	DisplayName         string `json:"displayName"`
+	Email               string `json:"email"`
+	PhotoURL            string `json:"photoURL"`
+	UseEmulator         bool   `json:"useEmulator"`
+	WindowX             int    `json:"windowX"`
+	WindowY             int    `json:"windowY"`
+	WindowW             int    `json:"windowW"`
+	WindowH             int    `json:"windowH"`
+	WindowPositionSaved bool   `json:"windowPositionSaved"`
+	DndEndTimestamp     int64  `json:"dndEndTimestamp"`
+	DndDurationMinutes  int    `json:"dndDurationMinutes"`
+	AutoHideAfterCards  int    `json:"autoHideAfterCards"`
+	ChallengeMode       string `json:"challengeMode"` // "normal", "reverse", "mixed"
+}
+
+func normalizeAutoHideAfterCards(value int) int {
+	if value < 0 {
+		return 0
+	}
+	if value > 10 {
+		return 10
+	}
+	return value
 }
 
 const configDirName = "taalgem-companion"
@@ -55,10 +65,10 @@ func LoadConfig() (*Config, error) {
 	// If file does not exist, return default config
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return &Config{
-			IntervalMinutes: 60,
-			ChallengeMode:      "normal", // Default value for new setting
-			AutoHideOnAnswer: 	true, // Default value for new setting
-			UseEmulator:     false,
+			IntervalMinutes:    60,
+			ChallengeMode:      "normal",
+			AutoHideAfterCards: 1,
+			UseEmulator:        false,
 		}, nil
 	}
 
@@ -68,18 +78,33 @@ func LoadConfig() (*Config, error) {
 	}
 
 	config := Config{
-		IntervalMinutes:    60,   // Default to 60 minutes if not set
-		ChallengeMode:      "normal", // Default value for new setting
-		AutoHideOnAnswer: 	true, // Default value for new setting
+		IntervalMinutes:    60,
+		ChallengeMode:      "normal",
+		AutoHideAfterCards: 1,
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
+	}
+
+	var legacyConfig struct {
+		AutoHideAfterCards *int  `json:"autoHideAfterCards"`
+		AutoHideOnAnswer   *bool `json:"autoHideOnAnswer"`
+	}
+	if err := json.Unmarshal(data, &legacyConfig); err == nil {
+		if legacyConfig.AutoHideAfterCards == nil && legacyConfig.AutoHideOnAnswer != nil {
+			if *legacyConfig.AutoHideOnAnswer {
+				config.AutoHideAfterCards = 1
+			} else {
+				config.AutoHideAfterCards = 0
+			}
+		}
 	}
 
 	// Guard against default 0 interval
 	if config.IntervalMinutes <= 0 {
 		config.IntervalMinutes = 60
 	}
+	config.AutoHideAfterCards = normalizeAutoHideAfterCards(config.AutoHideAfterCards)
 
 	return &config, nil
 }

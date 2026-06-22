@@ -7,7 +7,7 @@ import {
     Logout,
     RenameDeck,
     SaveInterval,
-    SaveAutoHideOnAnswer,
+    SaveAutoHideAfterCards,
     SetLaunchAtLogin,
     SetMChallengeMode,
 } from "../wailsjs/go/main/App";
@@ -222,6 +222,25 @@ export function SettingsPage() {
         }
     }, [showToast]);
 
+    const handleUpdateAutoHideAfterCards = useCallback(async (autoHideAfterCards: number) => {
+        try {
+            const success = await SaveAutoHideAfterCards(autoHideAfterCards);
+            if (success) {
+                setConfig((prev) => prev ? { ...prev, autoHideAfterCards } : null);
+                if (autoHideAfterCards === 0) {
+                    showToast("Auto-hide disabled.", "success");
+                } else {
+                    showToast(`Auto-hide set to every ${autoHideAfterCards} reviewed card${autoHideAfterCards === 1 ? "" : "s"}.`, "success");
+                }
+                return;
+            }
+            showToast("Failed to update auto-hide setting.", "error");
+        } catch (error) {
+            console.error("Error updating auto-hide setting:", error);
+            showToast("Error updating auto-hide setting.", "error");
+        }
+    }, [setConfig, showToast]);
+
     const profileInitials = getProfileInitials(config?.displayName, config?.email);
     const customDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID);
 
@@ -370,35 +389,27 @@ export function SettingsPage() {
                 <div className="layout-settings-section">
                     <div className="layout-settings-header">
                         <LucideEye className="layout-settings-icon text-sky-400" />
-                        <h3 className="layout-settings-title-compact"> Auto-Hide on Answer</h3>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={config?.autoHideOnAnswer || false}
-                                onChange={async (e) => {
-                                    const newValue = e.target.checked;
-                                    try {
-                                        const success = await SaveAutoHideOnAnswer(newValue);
-                                        if (success) {
-                                            setConfig(prev => prev ? { ...prev, autoHideOnAnswer: newValue } : null);
-                                        } else {
-                                            showToast("Failed to update Auto-Hide setting.", "error");
-                                        }
-                                    } catch (err) {
-                                        console.error("Error updating Auto-Hide setting:", err);
-                                        showToast("Error updating Auto-Hide setting.", "error");
-                                    }
-                                }}
-                                className="peer sr-only"
-                                aria-label="Toggle auto-hide on answer"
-                            />
-                            <span className="relative h-6 w-11 rounded-full border border-slate-700/70 bg-slate-900/70 transition-colors duration-200 peer-checked:bg-sky-500/30 peer-checked:border-sky-400/60 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-400/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-slate-950 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-slate-200 after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
-                        </label>
+                        <h3 className="layout-settings-title-compact"> Auto-Hide Threshold</h3>
+
+                        <select
+                            value={config?.autoHideAfterCards ?? 1}
+                            onChange={(event) => {
+                                const value = Number(event.target.value);
+                                void handleUpdateAutoHideAfterCards(value);
+                            }}
+                            className="rounded-lg bg-slate-900/70 border border-slate-700/70 px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60"
+                            aria-label="Choose auto-hide threshold"
+                        >
+                            <option value={0}>Off</option>
+                            {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
+                                <option key={count} value={count}>{count}</option>
+                            ))}
+                        </select>
 
 
                     </div>
                     <p className="layout-settings-help-compact">
-                        Automatically hide window on answer.
+                        Hide the app after every selected number of reviewed cards.
                     </p>
 
 

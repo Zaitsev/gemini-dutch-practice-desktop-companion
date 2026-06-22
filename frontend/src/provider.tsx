@@ -85,6 +85,7 @@ const useAppState = () => {
     const [savingSrs, setSavingSrs] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [practiceAll, setPracticeAll] = useState(false); // Practice all words if none are due
+    const [reviewedSinceLastAutoHide, setReviewedSinceLastAutoHide] = useState(0);
 
 
 
@@ -170,6 +171,8 @@ const useAppState = () => {
         setToast,
         practiceAll,
         setPracticeAll,
+        reviewedSinceLastAutoHide,
+        setReviewedSinceLastAutoHide,
         showToast,
         loadCards,
         handleTriggerManualCheck

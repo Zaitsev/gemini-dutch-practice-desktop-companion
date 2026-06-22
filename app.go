@@ -44,7 +44,7 @@ func (a *App) startup(ctx context.Context) {
 	cfg, err := LoadConfig()
 	if err != nil {
 		fmt.Printf("[Startup] Error loading config: %v\n", err)
-		a.config = &Config{IntervalMinutes: 60}
+		a.config = &Config{IntervalMinutes: 60, AutoHideAfterCards: 1, ChallengeMode: "normal"}
 	} else {
 		a.config = cfg
 	}
@@ -59,7 +59,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// Trigger background checker loop
-	
+
 	go a.startBackgroundChecker()
 }
 
@@ -132,12 +132,13 @@ func (a *App) SaveInterval(minutes int) bool {
 	return true
 }
 
-// SaveAutoHideOnAnswer updates and saves the autoHideOnAnswer setting
-func (a *App) SaveAutoHideOnAnswer(autoHide bool) bool {
+// SaveAutoHideAfterCards updates and saves the auto-hide threshold.
+// Value must be in range 0..10 where 0 means disabled.
+func (a *App) SaveAutoHideAfterCards(autoHideAfterCards int) bool {
 	a.configLock.Lock()
-	a.config.AutoHideOnAnswer = autoHide
+	a.config.AutoHideAfterCards = normalizeAutoHideAfterCards(autoHideAfterCards)
 	if err := a.config.Save(); err != nil {
-		runtime.LogErrorf(a.ctx, "[Config] Error saving autoHideOnAnswer: %v", err)
+		runtime.LogErrorf(a.ctx, "[Config] Error saving autoHideAfterCards: %v", err)
 		a.configLock.Unlock()
 		return false
 	}
@@ -219,12 +220,14 @@ func (a *App) Logout() bool {
 	runtime.EventsEmit(a.ctx, "auth_state_changed", nil)
 	return true
 }
+
 // GetWords returns the current in-memory flashcard list
 func (a *App) GetWords() []Word {
 	a.wordsLock.Lock()
 	defer a.wordsLock.Unlock()
 	return a.words
 }
+
 // Forse re-fetch words from Firestore and update in-memory cache
 func (a *App) ForseRefreshWords() {
 	// Prime in-memory flashcard cache on startup when available.
@@ -590,7 +593,6 @@ func isPositionOnScreen(x, y, w int, screens []runtime.Screen) bool {
 	return x+minVisible <= totalW && x+w > 0 && y >= 0 && y+minVisible <= maxH
 }
 
-
 func (a *App) SetMChallengeMode(mode string) bool {
 	a.configLock.Lock()
 	//check mode in normal, reverse, mixed
@@ -609,12 +611,11 @@ func (a *App) SetMChallengeMode(mode string) bool {
 	return true
 }
 
-
-// ShowAppCardWindow slides the window up from the system tray and brings it to the front, 
+// ShowAppCardWindow slides the window up from the system tray and brings it to the front,
 // then triggers a flashcard review data refresh in the frontend.
 func (a *App) ShowAppCardWindow() {
 	// Standard compact card popup window sizes
-	if  a.isWindowOpen {
+	if a.isWindowOpen {
 		fmt.Printf("[ShowWindow] Window is shown,do nothing.\n")
 		return
 	}
@@ -647,7 +648,7 @@ func (a *App) ResetReviewTimer() {
 		a.timerLock.Unlock()
 		return
 	}
-	
+
 	// If the in-memory flashcard list is empty and has never been successfully fetched, trigger an automatic background fetch.
 	if a.isCacheEmptyAndUnfetched() {
 		fmt.Println("[Timer] In-memory flashcard cache is empty. Attempting self-healing background fetch...")
@@ -658,7 +659,7 @@ func (a *App) ResetReviewTimer() {
 				fmt.Printf("[Timer] Background flashcard fetch failed: %v\n", err)
 				fmt.Println("[Timer] Reason: Local companion client is offline, Firestore authentication is expired, or Firestore rules are denying permission.")
 				fmt.Println("[Timer] Mitigation: Will automatically retry in 5 minutes (self-healing cooldown). Check internet connection or log out and log back in if problem persists.")
-				
+
 				// Schedule retry in 5 minutes
 				a.timerLock.Lock()
 				if a.reviewTimer != nil {
@@ -670,7 +671,7 @@ func (a *App) ResetReviewTimer() {
 				a.timerLock.Unlock()
 				return
 			}
-			
+
 			// Success! Cache the words & reset the review timer to instantly schedule the first due check dynamically.
 			a.setWords(words)
 			fmt.Printf("[Timer] Self-healing background flashcard fetch successful! Retrieved %d words. Dynamic review schedules will now compute.\n", len(words))
@@ -788,7 +789,6 @@ func (a *App) ResetReviewTimer() {
 // startBackgroundChecker loop manages the dynamic absolute-time timer and detects system wake/time-jump events
 func (a *App) startBackgroundChecker() {
 
-
 	// Schedule the first review timer run
 	a.ResetReviewTimer()
 
@@ -822,7 +822,7 @@ func (a *App) startBackgroundChecker() {
 
 	// Wait for application shutdown signal
 	<-a.timerStop
-	
+
 	a.timerLock.Lock()
 	if a.reviewTimer != nil {
 		a.reviewTimer.Stop()
@@ -843,10 +843,10 @@ func (a *App) ShowWindow() {
 	runtime.WindowShow(a.ctx)
 	a.isWindowOpen = true
 	runtime.WindowSetAlwaysOnTop(a.ctx, true)
-	
+
 	// Refresh the frontend data
 	runtime.EventsEmit(a.ctx, "trigger_flashcard_review", nil)
-	
+
 	// Recalculate timer and check if anything became due
 	go a.ResetReviewTimer()
 }

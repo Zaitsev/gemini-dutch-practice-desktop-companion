@@ -34,7 +34,7 @@ export function RenameDeck(arg1:string,arg2:string):Promise<boolean>;
 
 export function ResetReviewTimer():Promise<void>;
 
-export function SaveAutoHideOnAnswer(arg1:boolean):Promise<boolean>;
+export function SaveAutoHideAfterCards(arg1:number):Promise<boolean>;
 
 export function SaveInterval(arg1:number):Promise<boolean>;
 

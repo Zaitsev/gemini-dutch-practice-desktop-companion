@@ -8,7 +8,7 @@ export const AnswerControls: React.FC<{
     activeCard: Word | null;
     totalCards: number;
 }> = ({ activeCard, totalCards }) => {
-    const { practiceAll, currentCardIndex, setCurrentCardIndex, setIsFlipped, savingSrs, setSavingSrs } = useAppStateContext();
+    const { practiceAll, currentCardIndex, setCurrentCardIndex, setIsFlipped, savingSrs, setSavingSrs, reviewedSinceLastAutoHide, setReviewedSinceLastAutoHide } = useAppStateContext();
     const { config, showToast } = useAppStateContext();
     const handleGradeWord = useCallback(async (rating: SRSRating) => {
 
@@ -51,8 +51,14 @@ export const AnswerControls: React.FC<{
                             HideWindow();
                         }, 3000);
                     } else {
-                        if (config?.autoHideOnAnswer) {
+                        const autoHideAfterCards = config?.autoHideAfterCards ?? 1;
+                        const nextReviewedCount = reviewedSinceLastAutoHide + 1;
+
+                        if (autoHideAfterCards > 0 && nextReviewedCount >= autoHideAfterCards) {
                             HideWindow();
+                            setReviewedSinceLastAutoHide(0);
+                        } else {
+                            setReviewedSinceLastAutoHide(nextReviewedCount);
                         }
                         setIsFlipped(false);
                         setCurrentCardIndex(currentCardIndex + 1);
@@ -71,7 +77,7 @@ export const AnswerControls: React.FC<{
             //prevent state to stck in "Saving..." if something goes wrong
             setSavingSrs(false);
         }
-    }, [activeCard, savingSrs, currentCardIndex, totalCards, showToast, setIsFlipped, setCurrentCardIndex, setSavingSrs]);
+    }, [activeCard, savingSrs, currentCardIndex, totalCards, showToast, setIsFlipped, setCurrentCardIndex, setReviewedSinceLastAutoHide, setSavingSrs, reviewedSinceLastAutoHide, config?.autoHideAfterCards]);
 
     useEffect(() => {
         const handeKeys = async (e: React.KeyboardEvent) => {

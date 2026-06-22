@@ -66,8 +66,8 @@ export function ResetReviewTimer() {
   return window['go']['main']['App']['ResetReviewTimer']();
 }
 
-export function SaveAutoHideOnAnswer(arg1) {
-  return window['go']['main']['App']['SaveAutoHideOnAnswer'](arg1);
+export function SaveAutoHideAfterCards(arg1) {
+  return window['go']['main']['App']['SaveAutoHideAfterCards'](arg1);
 }
 
 export function SaveInterval(arg1) {
