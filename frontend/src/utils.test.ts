@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCategoryByLevel, countCardsByCurrentCategory } from './utils';
+import { getCategoryByLevel, countCardsByCurrentCategory, isLikelyNetworkError } from './utils';
 
 describe('Utils', () => {
   describe('getCategoryByLevel', () => {
@@ -45,6 +45,19 @@ describe('Utils', () => {
         good: 0,
         easy: 0,
       });
+    });
+  });
+
+  describe('isLikelyNetworkError', () => {
+    it('should detect common network failures', () => {
+      expect(isLikelyNetworkError('dial tcp: i/o timeout')).toBe(true);
+      expect(isLikelyNetworkError('client is offline')).toBe(true);
+      expect(isLikelyNetworkError('connection refused by host')).toBe(true);
+    });
+
+    it('should not classify auth problems as network failures', () => {
+      expect(isLikelyNetworkError('user not authenticated')).toBe(false);
+      expect(isLikelyNetworkError('permission denied')).toBe(false);
     });
   });
 });
