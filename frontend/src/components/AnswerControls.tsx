@@ -40,8 +40,8 @@ export const AnswerControls: React.FC<{
                 } 
             }
             if (success) {
-                // Play subtle success feedback or move to next word if enabled
-
+                // Flip the card back to front immediately so the flip animation completes before the next card loads
+                setIsFlipped(false);
                 setTimeout(() => {
                     if (currentCardIndex + 1 >= totalCards) {
                         // Stack empty
@@ -60,7 +60,6 @@ export const AnswerControls: React.FC<{
                         } else {
                             setReviewedSinceLastAutoHide(nextReviewedCount);
                         }
-                        setIsFlipped(false);
                         setCurrentCardIndex(currentCardIndex + 1);
                     }
                 }, 200);
