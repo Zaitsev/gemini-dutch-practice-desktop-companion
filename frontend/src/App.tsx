@@ -376,7 +376,7 @@ function App() {
 
       {/* Navigation Router Body */}
       <main className={`layout-main-content ${activeTab === 'reviews' && isLoggedIn ? 'layout-main-content-locked' : 'layout-main-content-scroll'}`}>
-        {isLoggedIn && networkRecoveryActive && (
+        {networkRecoveryActive && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
             {networkRecoveryMessage || "Waiting for internet connection. Retrying automatically..."}
           </div>
