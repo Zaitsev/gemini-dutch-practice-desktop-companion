@@ -101,3 +101,18 @@ export function dockeCounts(flashcards: Word[]): Record<string, number> {
     }, {} as Record<string, number>);
     return deckCounts;
 }
+
+export function isLikelyNetworkError(errorMessage: string): boolean {
+    const normalized = (errorMessage || "").toLowerCase();
+    return (
+        normalized.includes("network") ||
+        normalized.includes("internet") ||
+        normalized.includes("offline") ||
+        normalized.includes("connection refused") ||
+        normalized.includes("connection reset") ||
+        normalized.includes("dial tcp") ||
+        normalized.includes("timeout") ||
+        normalized.includes("temporarily unavailable") ||
+        normalized.includes("no such host")
+    );
+}

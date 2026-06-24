@@ -49,6 +49,7 @@ const EMPTY_DND_STATUS: DndStatus = {
 function App() {
   const { setConfig, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
   const { loadCards } = useAppStateContext();
+  const { networkRecoveryActive, networkRecoveryMessage } = useAppStateContext();
   const { flashcards, setFlashcards, activeTab, setActiveTab,  setCurrentCardIndex, setIsFlipped } = useAppStateContext();
   const {  setPracticeAll } = useAppStateContext(); // Practice all words if none are due
   const resizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -375,6 +376,11 @@ function App() {
 
       {/* Navigation Router Body */}
       <main className={`layout-main-content ${activeTab === 'reviews' && isLoggedIn ? 'layout-main-content-locked' : 'layout-main-content-scroll'}`}>
+        {networkRecoveryActive && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+            {networkRecoveryMessage || "Waiting for internet connection. Retrying automatically..."}
+          </div>
+        )}
         {!isLoggedIn ? (
           <LoginPage />
         ) : (
