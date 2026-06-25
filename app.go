@@ -510,7 +510,14 @@ func (a *App) TriggerPopupCheck() int {
 
 // SaveWindowState captures the current window position and size and persists it to config.
 // Call this before hiding or closing the window so the position survives app restarts.
+// If the window is not currently open (e.g. already hidden to the system tray during OS
+// shutdown), the call is a no-op so that a previously saved valid position is never
+// overwritten with the incorrect coordinates that the OS reports for a hidden window.
 func (a *App) SaveWindowState() {
+	if !a.isWindowOpen {
+		runtime.LogDebugf(a.ctx, "SaveWindowState: window is not open, skipping save to preserve last valid position")
+		return
+	}
 	x, y := runtime.WindowGetPosition(a.ctx)
 	w, h := runtime.WindowGetSize(a.ctx)
 	runtime.LogDebugf(a.ctx, "Saving window state: x=%d, y=%d, w=%d, h=%d", x, y, w, h)
@@ -587,6 +594,14 @@ func isPositionOnScreen(x, y, w int, screens []runtime.Screen) bool {
 		if s.Size.Height > maxH {
 			maxH = s.Size.Height
 		}
+	}
+
+	// On Windows cold-start the display subsystem may not be fully initialised yet,
+	// causing ScreenGetAll to return screens with zero dimensions.  Treat this the
+	// same as "no screen info available" and accept any non-negative position so
+	// that a valid saved position is never discarded at boot time.
+	if totalW == 0 || maxH == 0 {
+		return x >= 0 && y >= 0
 	}
 
 	// At least minVisible pixels of the window must be within the combined desktop
