@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCategoryByLevel, countCardsByCurrentCategory, isLikelyNetworkError } from './utils';
+import { buildReviewItems, getCategoryByLevel, countCardsByCurrentCategory, isLikelyNetworkError } from './utils';
 
 describe('Utils', () => {
   describe('getCategoryByLevel', () => {
@@ -45,6 +45,31 @@ describe('Utils', () => {
         good: 0,
         easy: 0,
       });
+    });
+  });
+
+  describe('buildReviewItems', () => {
+    it('randomizes the direction order for mixed-mode preview items so a word is not always shown direct first', () => {
+      const originalRandom = Math.random;
+      Math.random = () => 0;
+
+      try {
+        const words = [
+          { id: 'word-1', dutch: 'huis', english: 'house', addedAt: 1, creatorId: 'u1', srsLevel: 0, nextReviewAt: 0 },
+          { id: 'word-2', dutch: 'boek', english: 'book', addedAt: 1, creatorId: 'u1', srsLevel: 0, nextReviewAt: 0 },
+        ] as any;
+
+        const items = buildReviewItems(words, 'mixed', false, Date.now());
+
+        expect(items.map(item => `${item.word.id}-${item.direction}`)).toEqual([
+          'word-1-reverse',
+          'word-1-direct',
+          'word-2-reverse',
+          'word-2-direct',
+        ]);
+      } finally {
+        Math.random = originalRandom;
+      }
     });
   });
 

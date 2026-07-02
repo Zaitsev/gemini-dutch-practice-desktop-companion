@@ -38,11 +38,21 @@ export function getAllowedDirections(challengeMode: ChallengeMode): SrsDirection
  * appear twice if both its Direct and Reverse tracks are due). Results are sorted by each item's
  * own nextReviewAt ascending so the most overdue items come first.
  */
+function shuffleArray<T>(values: T[]): T[] {
+    const shuffled = [...values];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    return shuffled;
+}
+
 export function buildReviewItems(words: Word[], challengeMode: ChallengeMode, dueOnly: boolean, nowMs: number): ReviewItem[] {
     const directions = getAllowedDirections(challengeMode);
     const items: ReviewItem[] = [];
     for (const word of words) {
-        for (const direction of directions) {
+        const orderedDirections = !dueOnly && challengeMode === 'mixed' ? shuffleArray(directions) : directions;
+        for (const direction of orderedDirections) {
             const branch = getSrsBranch(word, direction);
             if (dueOnly && branch.nextReviewAt > nowMs) {
                 continue;
