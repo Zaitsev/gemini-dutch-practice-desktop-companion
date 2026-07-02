@@ -1,13 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
     ForseRefreshWords,
     GetWordsAndDecks,
     TriggerPopupCheck
 } from "../wailsjs/go/main/App";
 import type { ChallengeMode, Config } from "./const";
+import { isLikelyNetworkError } from "./utils";
 const appStateContext = createContext<AppState | null>(null);
 const CURRENT_CARD_INDEX_STORAGE_KEY = "desktopCompanion.currentCardIndex";
 const SELECTED_DECK_ID_STORAGE_KEY = "desktopCompanion.selectedDeckId";
+const NETWORK_RECOVERY_BANNER_MESSAGE = "No internet connection yet. We will retry automatically and refresh cards as soon as you're back online.";
+const NETWORK_RECOVERY_WAITING_MESSAGE = "Waiting for internet connection. Retrying automatically...";
 export interface Deck {
     id: string;
     name: string;
@@ -97,6 +100,24 @@ const useAppState = () => {
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [practiceAll, setPracticeAll] = useState(false); // Practice all words if none are due
     const [reviewedSinceLastAutoHide, setReviewedSinceLastAutoHide] = useState(0);
+    const [networkRecoveryActive, setNetworkRecoveryActive] = useState(false);
+    const [networkRecoveryMessage, setNetworkRecoveryMessage] = useState("");
+    const networkRecoveryInFlightRef = useRef(false);
+    const flashcardsLengthRef = useRef(0);
+    const currentCardIndexRef = useRef(0);
+    const networkRecoveryActiveRef = useRef(false);
+
+    useEffect(() => {
+        flashcardsLengthRef.current = flashcards.length;
+    }, [flashcards.length]);
+
+    useEffect(() => {
+        currentCardIndexRef.current = currentCardIndex;
+    }, [currentCardIndex]);
+
+    useEffect(() => {
+        networkRecoveryActiveRef.current = networkRecoveryActive;
+    }, [networkRecoveryActive]);
 
 
 
@@ -108,16 +129,22 @@ const useAppState = () => {
     };
 
 
-    const loadCards = useCallback(async (currentConfig: Config, forse = false) => {
+    const loadCards = useCallback(async (
+        currentConfig: Config,
+        force = false,
+        options: { suppressErrorToast?: boolean } = {}
+    ) => {
         console.log("Loading cards ");
         if (!currentConfig) {
             setFlashcards([]);
+            setNetworkRecoveryActive(false);
+            setNetworkRecoveryMessage("");
             return;
         }
-        if (!forse && flashcards.length > 0) {
+        if (!force && flashcardsLengthRef.current > 0) {
             console.log("Cards already loaded, skipping fetch.");
             setLoading(false);
-            if (flashcards.length < currentCardIndex) {
+            if (flashcardsLengthRef.current < currentCardIndexRef.current) {
                 setCurrentCardIndex(0);
             }
             return;
@@ -130,14 +157,57 @@ const useAppState = () => {
             console.log(`Fetched ${cards.length} cards from backend.`);
             setFlashcards(cards);
             setDecks(result?.decks || []);
+            if (networkRecoveryActiveRef.current) {
+                setNetworkRecoveryActive(false);
+                setNetworkRecoveryMessage("");
+                showToast("Internet restored. Flashcards refreshed.", "success");
+            }
         } catch (err) {
             console.error("Failed to load flashcards:", err);
             const errMsg = err instanceof Error ? err.message : String(err);
-            showToast(`Could not retrieve word list: ${errMsg}`, "error");
+            const networkError = isLikelyNetworkError(errMsg);
+            if (networkError && flashcardsLengthRef.current === 0) {
+                setNetworkRecoveryActive(true);
+                setNetworkRecoveryMessage(NETWORK_RECOVERY_BANNER_MESSAGE);
+            } else if (networkError && networkRecoveryActiveRef.current) {
+                setNetworkRecoveryMessage(NETWORK_RECOVERY_WAITING_MESSAGE);
+            }
+            if (!options.suppressErrorToast) {
+                showToast(`Could not retrieve word list: ${errMsg}`, "error");
+            }
         } finally {
             setLoading(false);
         }
+        // Intentionally stable for the recovery polling effect; refs above provide latest values without recreating this callback.
     }, [showToast]);
+
+    useEffect(() => {
+        if (!networkRecoveryActive || !config || !config.uid || !config.idToken) {
+            return;
+        }
+
+        // Poll every 15 seconds (15000ms) to recover quickly after login-time networking delays without overloading backend calls.
+        let active = true;
+        const timer = window.setInterval(async () => {
+            if (networkRecoveryInFlightRef.current) {
+                return;
+            }
+            networkRecoveryInFlightRef.current = true;
+            try {
+                await loadCards(config, true, { suppressErrorToast: true });
+            } finally {
+                if (active) {
+                    networkRecoveryInFlightRef.current = false;
+                }
+            }
+        }, 15000);
+
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+            networkRecoveryInFlightRef.current = false;
+        };
+    }, [networkRecoveryActive, config, loadCards]);
     const handleTriggerManualCheck = useCallback(async () => {
         setLoading(true);
         try {
@@ -184,6 +254,8 @@ const useAppState = () => {
         setPracticeAll,
         reviewedSinceLastAutoHide,
         setReviewedSinceLastAutoHide,
+        networkRecoveryActive,
+        networkRecoveryMessage,
         showToast,
         loadCards,
         handleTriggerManualCheck
