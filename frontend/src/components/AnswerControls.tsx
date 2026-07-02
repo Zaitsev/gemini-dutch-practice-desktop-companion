@@ -3,6 +3,7 @@ import type { SRSRating, SrsDirection } from "../const";
 import { useAppStateContext, type Word } from "../provider";
 import { HideWindow, UpdateSRS } from "../../wailsjs/go/main/App";
 import { calculateNextSRS, getSrsBranch } from "../utils";
+import { getNextCardIndex, isSessionComplete } from "./answer-controls-logic.js";
 
 export const AnswerControls: React.FC<{
     activeCard: Word | null;
@@ -47,9 +48,11 @@ export const AnswerControls: React.FC<{
                 // Flip the card back to front immediately so the flip animation completes before the next card loads
                 setIsFlipped(false);
                 setTimeout(() => {
-                    if (currentCardIndex + 1 >= totalCards) {
+                    const sessionComplete = isSessionComplete({ practiceAll, currentCardIndex, totalCards });
+
+                    if (sessionComplete) {
                         // Stack empty
-                        showToast("Congratulations! Review session completed.", "success");
+                        showToast(`Congratulations! Review session completed. of ${totalCards}`, "success");
                         // Auto hide app to tray after 3 seconds of showing success screen
                         setTimeout(() => {
                             HideWindow();
@@ -64,7 +67,10 @@ export const AnswerControls: React.FC<{
                         } else {
                             setReviewedSinceLastAutoHide(nextReviewedCount);
                         }
-                        setCurrentCardIndex(currentCardIndex + 1);
+
+                        // In Study mode the active card is always activeItems[0] and
+                        // the list shrinks after each grade, so the index must stay at 0.
+                        setCurrentCardIndex(getNextCardIndex({ practiceAll, currentCardIndex }));
                     }
                 }, 200);
             } else {
@@ -80,7 +86,7 @@ export const AnswerControls: React.FC<{
             //prevent state to stck in "Saving..." if something goes wrong
             setSavingSrs(false);
         }
-    }, [activeCard, direction, savingSrs, currentCardIndex, totalCards, showToast, setIsFlipped, setCurrentCardIndex, setReviewedSinceLastAutoHide, setSavingSrs, reviewedSinceLastAutoHide, config?.autoHideAfterCards]);
+    }, [activeCard, direction, savingSrs, currentCardIndex, totalCards, practiceAll, showToast, setIsFlipped, setCurrentCardIndex, setReviewedSinceLastAutoHide, setSavingSrs, reviewedSinceLastAutoHide, config?.autoHideAfterCards]);
 
     useEffect(() => {
         const handeKeys = async (e: React.KeyboardEvent) => {
