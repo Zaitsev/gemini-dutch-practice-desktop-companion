@@ -24,16 +24,15 @@ export const AnswerControls: React.FC<{
         try {
             
             setSavingSrs(true);
-            // DO not update SRS if user is just practicing all cards and this card is not actually due
-            // This also allows users to use practice all mode for extra practice on non-due cards without affecting their SRS schedule.
-            if (!practiceAll || (practiceAll && isDue)) {
+            // Practice mode should never update SRS state or reschedule cards.
+            // This keeps the user's normal review schedule intact while allowing extra practice.
+            if (!practiceAll) {
                 console.log(`Grading word "${activeCard.dutch}" (${direction}) with rating "${rating}". Current SRS level: ${currentBranch.srsLevel}`);
                 // 1. Calculate progress using standard shared-learning-logic mathematical models
                 const result = calculateNextSRS(currentBranch.srsLevel, rating);
 
-
                 // 2. Surgical Firestore PATCH via Go Rest Client
-                 success = await UpdateSRS(activeCard.id, direction, result.srsLevel, result.nextReviewAt);
+                success = await UpdateSRS(activeCard.id, direction, result.srsLevel, result.nextReviewAt);
 
                 // 3. Keep UI in sync with local state updates, even if the database update fails, to avoid jarring UX where card doesn't move but user has to wait for timeout and then click again
                 if (success) {
@@ -42,7 +41,7 @@ export const AnswerControls: React.FC<{
                         reverse: getSrsBranch(activeCard, 'reverse'),
                         [direction]: { srsLevel: result.srsLevel, nextReviewAt: result.nextReviewAt },
                     };
-                } 
+                }
             }
             if (success) {
                 // Flip the card back to front immediately so the flip animation completes before the next card loads

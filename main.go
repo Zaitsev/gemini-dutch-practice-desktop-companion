@@ -38,8 +38,8 @@ func main() {
 		StartHidden:       true, // Runs completely minimized to tray on start!
 		MinWidth:          320,
 		MinHeight:         400,
-		MaxWidth:          600,
-		MaxHeight:         700,
+		MaxWidth:          1200,
+		MaxHeight:         1400,
 		Frameless:         true, // Premium frameless pop-up window!
 		AssetServer: &assetserver.Options{
 			Assets: assets,

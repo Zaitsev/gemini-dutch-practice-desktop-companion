@@ -5,7 +5,7 @@ import { useAppStateContext } from "../provider";
 export const AllCardsDone: React.FC = () => {
     const { loadCards } = useAppStateContext();
     const { config, setCurrentCardIndex, setIsFlipped } = useAppStateContext();
-    const { setPracticeAll } = useAppStateContext(); // Practice all words if none are due
+    const { setPracticeAll } = useAppStateContext(); // Practice all words (cram mode) if none are due
     return (
         <div className="layout-center-state">
             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 to-amber-500 flex items-center justify-center mb-5 text-slate-950 shadow-lg shadow-yellow-500/10 animate-bounce">

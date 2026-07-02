@@ -42,15 +42,30 @@ const CardComponent: React.FC<{ word: Word; direction: SrsDirection }> = ({ word
 
 
 const WordsCounter: React.FC<{ items: ReviewItem[] }> = ({ items }) => {
-    const { practiceAll, selectedDeckId, setSelectedDeckId, decks ,flashcards} = useAppStateContext();
+    const {
+        practiceAll,
+        setPracticeAll,
+        selectedDeckId,
+        setSelectedDeckId,
+        setCurrentCardIndex,
+        setIsFlipped,
+        decks,
+        flashcards
+    } = useAppStateContext();
     const cats = countCardsByCurrentCategory(items);
-        const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
-        return (
+    const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
+    const handleModeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+        const nextPracticeAll = e.target.value === "practice";
+        setPracticeAll(nextPracticeAll);
+        setCurrentCardIndex(0);
+        setIsFlipped(false);
+    }, [setPracticeAll, setCurrentCardIndex, setIsFlipped]);
+    return (
         <div className="flex items-center gap-2">
             <select
                 value={selectedDeckId}
                 onChange={(e) => setSelectedDeckId(e.target.value)}
-                className="bg-slate-900/80 text-[11px] font-semibold text-slate-300 border border-slate-700/30 rounded-md px-1.5 py-0.5 outline-none hover:bg-slate-800 hover:border-slate-600 transition-colors cursor-pointer"
+                className="bg-slate-900/80 text-sm font-semibold text-slate-300 border border-slate-700/30 rounded-md px-1.5 py-0.5 outline-none hover:bg-slate-800 hover:border-slate-600 transition-colors cursor-pointer"
             >
                 <option value="all" className="bg-slate-900 text-slate-300">All Decks</option>
                 {decks.map(deck => (
@@ -59,9 +74,16 @@ const WordsCounter: React.FC<{ items: ReviewItem[] }> = ({ items }) => {
                     </option>
                 ))}
             </select>
-            <span className="bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/30 shrink-0">
-                {practiceAll ? 'Practice stack' : 'Due stack'}
-            </span>
+            <select
+                value={practiceAll ? "practice" : "due"}
+                onChange={handleModeChange}
+                className={`${practiceAll ? "bg-orange-400/70" : "bg-slate-900/80"}  text-sm font-semibold text-slate-300 border border-slate-700/30 rounded-md px-2 py-0.5 outline-none hover:bg-slate-800 hover:border-slate-600 transition-colors cursor-pointer shrink-0`}
+                title="Review mode"
+            >
+                <option value="due" className="bg-slate-900 text-slate-300">Study</option>
+                <option value="practice" className="bg-slate-900 text-slate-300">Preview</option>
+            </select>
+            {/*Due cards counter :  Display counts of due cards by category  */}
             <span className="text-slate-500 truncate">
                 <span className="text-red-500 mr-1">{cats.again}</span>
                 <span className="text-orange-500 mr-1">{cats.hard}</span>
@@ -142,7 +164,7 @@ export const WordPage: React.FC = React.memo(() => {
                 {practiceAll && activeItems.length > 0 && currentCardIndex < activeItems.length && (
                     <button
                         onClick={handleSkipWord}
-                        className="flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200 font-bold rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
+                        className="text-sm flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200  rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
                         title="Skip this word"
                     >
                         <span>Skip</span>
