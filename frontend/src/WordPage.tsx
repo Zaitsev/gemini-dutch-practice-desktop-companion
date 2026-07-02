@@ -176,7 +176,7 @@ export const WordPage: React.FC = React.memo(() => {
             {activeItems.length === 0 ? (
                 /* All caught up state */
                 <AllCatchUp totalCards={deckCards.length} />
-            ) : currentCardIndex >= activeItems.length ? (
+            ) : (practiceAll && currentCardIndex >= activeItems.length) ? (
                 /* Review stack finished screen */
                 <AllCardsDone />
             ) : (

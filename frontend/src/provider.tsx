@@ -69,12 +69,12 @@ const useAppState = () => {
 
     const setCurrentCardIndex = (index: number) => {
         try {
-            localStorage.setItem(CURRENT_CARD_INDEX_STORAGE_KEY, String(currentCardIndex));
+            localStorage.setItem(CURRENT_CARD_INDEX_STORAGE_KEY, String(index));
         } catch (e) {
             console.error("Failed to save currentCardIndex to localStorage:", e);
         }
         setCurrentCardIndex_(index);
-        console.log(`Updated currentCardIndex to ${currentCardIndex} and saved to localStorage.`);
+        console.log(`Updated currentCardIndex to ${index} and saved to localStorage.`);
     };
     const [selectedDeckId, setSelectedDeckId_] = useState<string>(() => {
         try {
