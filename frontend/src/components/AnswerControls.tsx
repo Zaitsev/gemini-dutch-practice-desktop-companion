@@ -1,20 +1,22 @@
 import { useCallback, useEffect } from "react";
-import type { SRSRating } from "../const";
+import type { SRSRating, SrsDirection } from "../const";
 import { useAppStateContext, type Word } from "../provider";
 import { HideWindow, UpdateSRS } from "../../wailsjs/go/main/App";
-import { calculateNextSRS } from "../utils";
+import { calculateNextSRS, getSrsBranch } from "../utils";
 
 export const AnswerControls: React.FC<{
     activeCard: Word | null;
+    direction: SrsDirection;
     totalCards: number;
-}> = ({ activeCard, totalCards }) => {
+}> = ({ activeCard, direction, totalCards }) => {
     const { practiceAll, currentCardIndex, setCurrentCardIndex, setIsFlipped, savingSrs, setSavingSrs, reviewedSinceLastAutoHide, setReviewedSinceLastAutoHide } = useAppStateContext();
     const { config, showToast } = useAppStateContext();
     const handleGradeWord = useCallback(async (rating: SRSRating) => {
 
         if (!activeCard || savingSrs) return;
         const nowMs = Date.now();
-        const isDue = (activeCard.nextReviewAt || 0) <= nowMs;
+        const currentBranch = getSrsBranch(activeCard, direction);
+        const isDue = (currentBranch.nextReviewAt || 0) <= nowMs;
 
         let success = true;
         
@@ -25,18 +27,21 @@ export const AnswerControls: React.FC<{
             // DO not update SRS if user is just practicing all cards and this card is not actually due
             // This also allows users to use practice all mode for extra practice on non-due cards without affecting their SRS schedule.
             if (!practiceAll || (practiceAll && isDue)) {
-                console.log(`Grading word "${activeCard.dutch}" with rating "${rating}". Current SRS level: ${activeCard.srsLevel}`);
+                console.log(`Grading word "${activeCard.dutch}" (${direction}) with rating "${rating}". Current SRS level: ${currentBranch.srsLevel}`);
                 // 1. Calculate progress using standard shared-learning-logic mathematical models
-                const result = calculateNextSRS(activeCard.srsLevel, rating);
+                const result = calculateNextSRS(currentBranch.srsLevel, rating);
 
 
                 // 2. Surgical Firestore PATCH via Go Rest Client
-                 success = await UpdateSRS(activeCard.id, result.srsLevel, result.nextReviewAt);
+                 success = await UpdateSRS(activeCard.id, direction, result.srsLevel, result.nextReviewAt);
 
                 // 3. Keep UI in sync with local state updates, even if the database update fails, to avoid jarring UX where card doesn't move but user has to wait for timeout and then click again
                 if (success) {
-                    activeCard.srsLevel = result.srsLevel;
-                    activeCard.nextReviewAt = result.nextReviewAt;
+                    activeCard.srsLevels = {
+                        direct: getSrsBranch(activeCard, 'direct'),
+                        reverse: getSrsBranch(activeCard, 'reverse'),
+                        [direction]: { srsLevel: result.srsLevel, nextReviewAt: result.nextReviewAt },
+                    };
                 } 
             }
             if (success) {
@@ -77,7 +82,7 @@ export const AnswerControls: React.FC<{
             //prevent state to stck in "Saving..." if something goes wrong
             setSavingSrs(false);
         }
-    }, [activeCard, savingSrs, currentCardIndex, totalCards, showToast, setIsFlipped, setCurrentCardIndex, setReviewedSinceLastAutoHide, setSavingSrs, reviewedSinceLastAutoHide, config?.autoHideAfterCards]);
+    }, [activeCard, direction, savingSrs, currentCardIndex, totalCards, showToast, setIsFlipped, setCurrentCardIndex, setReviewedSinceLastAutoHide, setSavingSrs, reviewedSinceLastAutoHide, config?.autoHideAfterCards]);
 
     useEffect(() => {
         const handeKeys = async (e: React.KeyboardEvent) => {

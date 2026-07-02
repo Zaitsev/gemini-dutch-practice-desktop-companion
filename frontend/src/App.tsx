@@ -23,6 +23,8 @@ import { LoginPage } from './LoginPage';
 import { useAppStateContext } from './provider';
 import { SettingsPage } from './settingsPage';
 import { WordPage } from './WordPage';
+import type { ChallengeMode } from './const';
+import { buildReviewItems } from './utils';
 
 
 
@@ -47,7 +49,7 @@ const EMPTY_DND_STATUS: DndStatus = {
 };
 
 function App() {
-  const { setConfig, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
+  const { setConfig, config, isLoggedIn, setIsLoggedIn, loading, setLoading, showToast } = useAppStateContext();
   const { loadCards } = useAppStateContext();
   const { flashcards, setFlashcards, activeTab, setActiveTab,  setCurrentCardIndex, setIsFlipped } = useAppStateContext();
   const {  setPracticeAll } = useAppStateContext(); // Practice all words if none are due
@@ -276,7 +278,8 @@ function App() {
 
   // Filter due cards or provide practice stack
   const nowMs = Date.now();
-  const dueCards = flashcards.filter(c => c.nextReviewAt <= nowMs);
+  const challengeMode = (config?.challengeMode || 'normal') as ChallengeMode;
+  const dueCards = buildReviewItems(flashcards, challengeMode, true, nowMs);
 
 
 

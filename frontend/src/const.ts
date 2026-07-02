@@ -4,6 +4,9 @@ export const MIN_SRS_LEVEL = 0;
 export const MAX_SRS_LEVEL = 7;
 export type SRSRating = 'again' | 'hard' | 'good' | 'easy';
 export type ChallengeMode = 'normal' | 'reverse' | 'mixed';
+/** Which SRS track a card review applies to: Direct = Dutch->English (NormalCard/NormalImageCard),
+ * Reverse = English->Dutch (ReverseCard). */
+export type SrsDirection = 'direct' | 'reverse';
 export interface Config {
     intervalMinutes: number;
     idToken: string;

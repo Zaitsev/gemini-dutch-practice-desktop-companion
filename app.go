@@ -300,6 +300,7 @@ func (a *App) mergeWordsWithDictionary(client *FirestoreClient, dictionaryState 
 			words[i].SrsLevel = int(srsStats.SrsLevel)
 			words[i].NextReviewAt = srsStats.NextReviewAt
 			words[i].DeckIds = append([]string(nil), srsStats.DeckIds...)
+			words[i].SRSLevels = srsStats.SRSLevels
 		} else {
 			words[i].SrsLevel = 0
 			words[i].NextReviewAt = time.Now().UnixNano() / int64(time.Millisecond)
@@ -366,13 +367,13 @@ func (a *App) SetWordDeckIds(wordID string, deckIds []string) (bool, error) {
 	return true, nil
 }
 
-// UpdateSRS saves review progress to Firestore REST API
-func (a *App) UpdateSRS(wordId string, srsLevel int, nextReviewAt int64) (bool, error) {
+// UpdateSRS saves review progress to Firestore REST API for the given direction ("direct" or "reverse")
+func (a *App) UpdateSRS(wordId string, direction string, srsLevel int, nextReviewAt int64) (bool, error) {
 	client, err := a.newFirestoreClient()
 	if err != nil {
 		return false, err
 	}
-	if err := client.UpdateWordSRS(wordId, srsLevel, nextReviewAt); err != nil {
+	if err := client.UpdateWordSRS(wordId, direction, srsLevel, nextReviewAt); err != nil {
 		return false, err
 	}
 

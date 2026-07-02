@@ -29,13 +29,28 @@ type DictionaryWordState struct {
 	SrsLevel    int64    `json:"srsLevel"`
 	NextReviewAt int64   `json:"nextReviewAt"`
 	DeckIds     []string `json:"deckIds"`
+	SRSLevels           SRSLevels              `json:"srsLevels,omitempty"`
+	// HasSRSLevels tracks whether the raw Firestore doc already contained a `srsLevels` field for this
+	// word (i.e. it has already been migrated). Not serialized; used only to drive one-time migration
+	// of the legacy SrsLevel/NextReviewAt fields into SRSLevels.Direct/Reverse.
+	HasSRSLevels bool `json:"-"`
 }
 
 type DictionaryState struct {
 	Words map[string]DictionaryWordState `json:"words"`
 	Decks []Deck                         `json:"decks"`
 }
+type SRSLevels struct {
+	Direct struct { //Foreign-to-native direction
+		SrsLevel            int                    `json:"srsLevel"`
+		NextReviewAt        int64                  `json:"nextReviewAt"`
+	} `json:"direct"`
+	Reverse struct { //Native-to-foreign direction
+		SrsLevel            int                    `json:"srsLevel"`
+		NextReviewAt        int64                  `json:"nextReviewAt"`
+	} `json:"reverse"`
 
+}
 type Word struct {
 	Id                  string                 `json:"id"`
 	Dutch               string                 `json:"dutch"`
@@ -49,6 +64,7 @@ type Word struct {
 	DeckIds             []string               `json:"deckIds,omitempty"`
 	WordAudioUrl        string                 `json:"wordAudioUrl,omitempty"`
 	WordTeacherAudioUrl string                 `json:"wordTeacherAudioUrl,omitempty"`
+	SRSLevels           SRSLevels              `json:"srsLevels,omitempty"`
 }
 
 type BatchGetResult struct {
@@ -185,6 +201,18 @@ func normalizeDictionaryData(data DictionaryState) (DictionaryState, bool) {
 	}
 
 	for wordID, wordState := range result.Words {
+		// Transparent upgrade: seed SRSLevels.Direct/Reverse from the legacy single-direction
+		// srsLevel/nextReviewAt fields the first time this word is read. Legacy fields are left
+		// untouched (frozen historical snapshot) and never written to again after this point.
+		if !wordState.HasSRSLevels {
+			wordState.SRSLevels.Direct.SrsLevel = int(wordState.SrsLevel)
+			wordState.SRSLevels.Direct.NextReviewAt = wordState.NextReviewAt
+			wordState.SRSLevels.Reverse.SrsLevel = int(wordState.SrsLevel) / 2
+			wordState.SRSLevels.Reverse.NextReviewAt = 0
+			wordState.HasSRSLevels = true
+			changed = true
+		}
+
 		normalizedDeckIds := make([]string, 0, len(wordState.DeckIds)+1)
 		seen := make(map[string]struct{}, len(wordState.DeckIds)+1)
 		for _, deckID := range wordState.DeckIds {
@@ -263,6 +291,28 @@ func encodeDictionaryData(data DictionaryState) map[string]interface{} {
 					"nextReviewAt": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.NextReviewAt, 10)},
 					"deckIds": map[string]interface{}{
 						"arrayValue": map[string]interface{}{"values": deckIds},
+					},
+					"srsLevels": map[string]interface{}{
+						"mapValue": map[string]interface{}{
+							"fields": map[string]interface{}{
+								"direct": map[string]interface{}{
+									"mapValue": map[string]interface{}{
+										"fields": map[string]interface{}{
+											"srsLevel":     map[string]interface{}{"integerValue": strconv.Itoa(wordState.SRSLevels.Direct.SrsLevel)},
+											"nextReviewAt": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.SRSLevels.Direct.NextReviewAt, 10)},
+										},
+									},
+								},
+								"reverse": map[string]interface{}{
+									"mapValue": map[string]interface{}{
+										"fields": map[string]interface{}{
+											"srsLevel":     map[string]interface{}{"integerValue": strconv.Itoa(wordState.SRSLevels.Reverse.SrsLevel)},
+											"nextReviewAt": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.SRSLevels.Reverse.NextReviewAt, 10)},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -345,6 +395,49 @@ func parseDictionaryData(response map[string]interface{}) DictionaryState {
 							wordState.SrsLevel, _ = strconv.ParseInt(srsLevelStr, 10, 64)
 						}
 					}
+
+					// Parse SRSLevels.direct / SRSLevels.reverse (dual-direction SRS tracking).
+					// wordFieldsMap["srsLevels"] -> { mapValue: { fields: { direct: {...}, reverse: {...} } } }
+					if srsLevelsObj, ok := wordFieldsMap["srsLevels"].(map[string]interface{}); ok {
+						wordState.HasSRSLevels = true
+						if srsLevelsMapValue, ok := srsLevelsObj["mapValue"].(map[string]interface{}); ok {
+							if srsLevelsFields, ok := srsLevelsMapValue["fields"].(map[string]interface{}); ok {
+								if directObj, ok := srsLevelsFields["direct"].(map[string]interface{}); ok {
+									if directValue, ok := directObj["mapValue"].(map[string]interface{}); ok {
+										if directFields, ok := directValue["fields"].(map[string]interface{}); ok {
+											if srsLevelObj, ok := directFields["srsLevel"].(map[string]interface{}); ok {
+												if srsLevelStr, ok := srsLevelObj["integerValue"].(string); ok {
+													wordState.SRSLevels.Direct.SrsLevel, _ = strconv.Atoi(srsLevelStr)
+												}
+											}
+											if nextReviewObj, ok := directFields["nextReviewAt"].(map[string]interface{}); ok {
+												if nextReviewStr, ok := nextReviewObj["integerValue"].(string); ok {
+													wordState.SRSLevels.Direct.NextReviewAt, _ = strconv.ParseInt(nextReviewStr, 10, 64)
+												}
+											}
+										}
+									}
+								}
+								if reverseObj, ok := srsLevelsFields["reverse"].(map[string]interface{}); ok {
+									if reverseValue, ok := reverseObj["mapValue"].(map[string]interface{}); ok {
+										if reverseFields, ok := reverseValue["fields"].(map[string]interface{}); ok {
+											if srsLevelObj, ok := reverseFields["srsLevel"].(map[string]interface{}); ok {
+												if srsLevelStr, ok := srsLevelObj["integerValue"].(string); ok {
+													wordState.SRSLevels.Reverse.SrsLevel, _ = strconv.Atoi(srsLevelStr)
+												}
+											}
+											if nextReviewObj, ok := reverseFields["nextReviewAt"].(map[string]interface{}); ok {
+												if nextReviewStr, ok := nextReviewObj["integerValue"].(string); ok {
+													wordState.SRSLevels.Reverse.NextReviewAt, _ = strconv.ParseInt(nextReviewStr, 10, 64)
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+
 					if nextReviewObj, ok := wordFieldsMap["nextReviewAt"].(map[string]interface{}); ok {
 						if nextReviewStr, ok := nextReviewObj["integerValue"].(string); ok {
 							wordState.NextReviewAt, _ = strconv.ParseInt(nextReviewStr, 10, 64)
@@ -1015,9 +1108,16 @@ func (fc *FirestoreClient) GetWordsByIds(wordIds []string) ([]Word, error) {
 	return allWords, nil
 }
 
-// UpdateWordSRS updates nested word SRS fields in userDictionaries/{uid} using patch update masks.
+// UpdateWordSRS updates the nested per-direction word SRS fields (srsLevels.direct or
+// srsLevels.reverse) in userDictionaries/{uid} using patch update masks. Legacy top-level
+// srsLevel/nextReviewAt fields are frozen historical snapshots from the initial migration and
+// are intentionally never written here.
 // If the document does not exist (HTTP 404), it intercepts the error and initializes the user's dictionary.
-func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReviewAt int64) error {
+func (fc *FirestoreClient) UpdateWordSRS(wordId string, direction string, srsLevel int, nextReviewAt int64) error {
+	if direction != "direct" && direction != "reverse" {
+		return fmt.Errorf("invalid srs direction %q: must be \"direct\" or \"reverse\"", direction)
+	}
+
 	baseUrl := fc.GetBaseUrl()
 	docUrl := fmt.Sprintf("%s/userDictionaries/%s", baseUrl, fc.uid)
 
@@ -1028,8 +1128,8 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 	}
 	q := u.Query()
 	escapedWordId := escapeFieldPathSegment(wordId)
-	q.Add("updateMask.fieldPaths", fmt.Sprintf("words.%s.srsLevel", escapedWordId))
-	q.Add("updateMask.fieldPaths", fmt.Sprintf("words.%s.nextReviewAt", escapedWordId))
+	q.Add("updateMask.fieldPaths", fmt.Sprintf("words.%s.srsLevels.%s.srsLevel", escapedWordId, direction))
+	q.Add("updateMask.fieldPaths", fmt.Sprintf("words.%s.srsLevels.%s.nextReviewAt", escapedWordId, direction))
 	u.RawQuery = q.Encode()
 
 	// Firestore patch payload
@@ -1041,11 +1141,23 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 						wordId: map[string]interface{}{
 							"mapValue": map[string]interface{}{
 								"fields": map[string]interface{}{
-									"srsLevel": map[string]interface{}{
-										"integerValue": strconv.Itoa(srsLevel),
-									},
-									"nextReviewAt": map[string]interface{}{
-										"integerValue": strconv.FormatInt(nextReviewAt, 10),
+									"srsLevels": map[string]interface{}{
+										"mapValue": map[string]interface{}{
+											"fields": map[string]interface{}{
+												direction: map[string]interface{}{
+													"mapValue": map[string]interface{}{
+														"fields": map[string]interface{}{
+															"srsLevel": map[string]interface{}{
+																"integerValue": strconv.Itoa(srsLevel),
+															},
+															"nextReviewAt": map[string]interface{}{
+																"integerValue": strconv.FormatInt(nextReviewAt, 10),
+															},
+														},
+													},
+												},
+											},
+										},
 									},
 								},
 							},
@@ -1071,7 +1183,13 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 
 		fmt.Printf("[FirestoreClient] Dictionary document not found for user %s. Initializing...\n", fc.uid)
 
-		// Fallback PATCH payload to initialize the document with empty seenWords and first word's SRS
+		// Fallback PATCH payload to initialize the document with empty seenWords and first word's SRS.
+		// Legacy srsLevel/nextReviewAt are bootstrapped at 0 (frozen from here on); only the graded
+		// direction's srsLevels branch gets the real values.
+		otherDirection := "reverse"
+		if direction == "reverse" {
+			otherDirection = "direct"
+		}
 		fallbackPayload := map[string]interface{}{
 			"fields": map[string]interface{}{
 				"decks": map[string]interface{}{
@@ -1095,15 +1213,45 @@ func (fc *FirestoreClient) UpdateWordSRS(wordId string, srsLevel int, nextReview
 								"mapValue": map[string]interface{}{
 									"fields": map[string]interface{}{
 										"srsLevel": map[string]interface{}{
-											"integerValue": strconv.Itoa(srsLevel),
+											"integerValue": "0",
 										},
 										"nextReviewAt": map[string]interface{}{
-											"integerValue": strconv.FormatInt(nextReviewAt, 10),
+											"integerValue": "0",
 										},
 										"deckIds": map[string]interface{}{
 											"arrayValue": map[string]interface{}{
 												"values": []interface{}{
 													map[string]interface{}{"stringValue": defaultDeckID},
+												},
+											},
+										},
+										"srsLevels": map[string]interface{}{
+											"mapValue": map[string]interface{}{
+												"fields": map[string]interface{}{
+													direction: map[string]interface{}{
+														"mapValue": map[string]interface{}{
+															"fields": map[string]interface{}{
+																"srsLevel": map[string]interface{}{
+																	"integerValue": strconv.Itoa(srsLevel),
+																},
+																"nextReviewAt": map[string]interface{}{
+																	"integerValue": strconv.FormatInt(nextReviewAt, 10),
+																},
+															},
+														},
+													},
+													otherDirection: map[string]interface{}{
+														"mapValue": map[string]interface{}{
+															"fields": map[string]interface{}{
+																"srsLevel": map[string]interface{}{
+																	"integerValue": "0",
+																},
+																"nextReviewAt": map[string]interface{}{
+																	"integerValue": "0",
+																},
+															},
+														},
+													},
 												},
 											},
 										},

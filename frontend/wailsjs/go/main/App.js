@@ -106,6 +106,6 @@ export function TriggerPopupCheck() {
   return window['go']['main']['App']['TriggerPopupCheck']();
 }
 
-export function UpdateSRS(arg1, arg2, arg3) {
-  return window['go']['main']['App']['UpdateSRS'](arg1, arg2, arg3);
+export function UpdateSRS(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UpdateSRS'](arg1, arg2, arg3, arg4);
 }

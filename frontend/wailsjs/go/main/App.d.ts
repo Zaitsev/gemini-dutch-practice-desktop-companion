@@ -54,4 +54,4 @@ export function ShowWindow():Promise<void>;
 
 export function TriggerPopupCheck():Promise<number>;
 
-export function UpdateSRS(arg1:string,arg2:number,arg3:number):Promise<boolean>;
+export function UpdateSRS(arg1:string,arg2:string,arg3:number,arg4:number):Promise<boolean>;

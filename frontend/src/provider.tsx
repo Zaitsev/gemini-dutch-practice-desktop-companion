@@ -12,6 +12,14 @@ export interface Deck {
     id: string;
     name: string;
 }
+export interface SrsLevelState {
+    srsLevel: number;
+    nextReviewAt: number;
+}
+export interface SRSLevels {
+    direct: SrsLevelState;
+    reverse: SrsLevelState;
+}
 export interface Word {
     id: string;
     dutch: string;
@@ -20,11 +28,14 @@ export interface Word {
     addedAt: number;
     creatorId: string;
     examples?: any[];
+    /** @deprecated legacy single-direction SRS level, frozen after migration to srsLevels — use srsLevels.direct instead */
     srsLevel: number;
+    /** @deprecated legacy single-direction next review timestamp, frozen after migration — use srsLevels.direct instead */
     nextReviewAt: number;
     deckIds?: string[];
     wordAudioUrl?: string;
     wordTeacherAudioUrl?: string;
+    srsLevels?: SRSLevels;
 }
 
 

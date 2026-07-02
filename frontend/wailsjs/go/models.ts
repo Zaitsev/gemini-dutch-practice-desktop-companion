@@ -76,6 +76,40 @@ export namespace main {
 	        this.durationMinutes = source["durationMinutes"];
 	    }
 	}
+	export class SRSLevels {
+	    // Go type: struct { SrsLevel int "json:\"srsLevel\""; NextReviewAt int64 "json:\"nextReviewAt\"" }
+	    direct: any;
+	    // Go type: struct { SrsLevel int "json:\"srsLevel\""; NextReviewAt int64 "json:\"nextReviewAt\"" }
+	    reverse: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SRSLevels(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.direct = this.convertValues(source["direct"], Object);
+	        this.reverse = this.convertValues(source["reverse"], Object);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Word {
 	    id: string;
 	    dutch: string;
@@ -89,6 +123,7 @@ export namespace main {
 	    deckIds?: string[];
 	    wordAudioUrl?: string;
 	    wordTeacherAudioUrl?: string;
+	    srsLevels?: SRSLevels;
 	
 	    static createFrom(source: any = {}) {
 	        return new Word(source);
@@ -108,7 +143,26 @@ export namespace main {
 	        this.deckIds = source["deckIds"];
 	        this.wordAudioUrl = source["wordAudioUrl"];
 	        this.wordTeacherAudioUrl = source["wordTeacherAudioUrl"];
+	        this.srsLevels = this.convertValues(source["srsLevels"], SRSLevels);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class WordsAndDecks {
 	    words: Word[];

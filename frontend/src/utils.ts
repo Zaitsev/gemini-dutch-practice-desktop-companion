@@ -1,9 +1,60 @@
-import { DEFAULT_DECK_ID, MAX_SRS_LEVEL, MIN_SRS_LEVEL, popUpIntervals, srsIntervalsMinutes, type SRSRating } from "./const";
-import type { Word } from "./provider";
+import { DEFAULT_DECK_ID, MAX_SRS_LEVEL, MIN_SRS_LEVEL, popUpIntervals, srsIntervalsMinutes, type ChallengeMode, type SRSRating, type SrsDirection } from "./const";
+import type { SrsLevelState, Word } from "./provider";
 
 export type AnswerKind = 'Again' | 'Hard' | 'Good' | 'Easy';
 
+/** A single reviewable (word, direction) pairing shown as one flashcard in the review stack. */
+export interface ReviewItem {
+    word: Word;
+    direction: SrsDirection;
+}
 
+/**
+ * Reads the effective SRS level/nextReviewAt for a given direction, falling back to the legacy
+ * top-level fields for 'direct' (pre-migration/stale-cache safety), or a fresh/never-reviewed
+ * state for 'reverse' when srsLevels hasn't been populated yet.
+ */
+export function getSrsBranch(word: Word, direction: SrsDirection): SrsLevelState {
+    const branch = word.srsLevels?.[direction];
+    if (branch) {
+        return branch;
+    }
+    if (direction === 'direct') {
+        return { srsLevel: word.srsLevel ?? 0, nextReviewAt: word.nextReviewAt ?? 0 };
+    }
+    return { srsLevel: 0, nextReviewAt: 0 };
+}
+
+/** Which SRS direction(s) are reviewable under a given challenge mode. */
+export function getAllowedDirections(challengeMode: ChallengeMode): SrsDirection[] {
+    if (challengeMode === 'reverse') return ['reverse'];
+    if (challengeMode === 'mixed') return ['direct', 'reverse'];
+    return ['direct'];
+}
+
+/**
+ * Builds the list of reviewable (word, direction) items for the given challenge mode.
+ * When dueOnly is true, only items whose branch nextReviewAt <= nowMs are included (a word can
+ * appear twice if both its Direct and Reverse tracks are due). Results are sorted by each item's
+ * own nextReviewAt ascending so the most overdue items come first.
+ */
+export function buildReviewItems(words: Word[], challengeMode: ChallengeMode, dueOnly: boolean, nowMs: number): ReviewItem[] {
+    const directions = getAllowedDirections(challengeMode);
+    const items: ReviewItem[] = [];
+    for (const word of words) {
+        for (const direction of directions) {
+            const branch = getSrsBranch(word, direction);
+            if (dueOnly && branch.nextReviewAt > nowMs) {
+                continue;
+            }
+            items.push({ word, direction });
+        }
+    }
+    if (dueOnly) {
+        items.sort((a, b) => getSrsBranch(a.word, a.direction).nextReviewAt - getSrsBranch(b.word, b.direction).nextReviewAt);
+    }
+    return items;
+}
 
 /**
  * Maps a current SRS level to a category.
@@ -19,7 +70,7 @@ export function getCategoryByLevel(level: number): SRSRating {
 /**
  * Calculates the number of cards in each category.
  */
-export function countCardsByCurrentCategory(cards: Word[]): Record<SRSRating, number> {
+export function countCardsByCurrentCategory(items: ReviewItem[]): Record<SRSRating, number> {
   const counts: Record<SRSRating, number> = {
     again: 0,
     hard: 0,
@@ -27,8 +78,8 @@ export function countCardsByCurrentCategory(cards: Word[]): Record<SRSRating, nu
     easy: 0,
   };
 
-  for (const card of cards) {
-    const category = getCategoryByLevel(card.srsLevel);
+  for (const item of items) {
+    const category = getCategoryByLevel(getSrsBranch(item.word, item.direction).srsLevel);
     counts[category]++;
   }
 

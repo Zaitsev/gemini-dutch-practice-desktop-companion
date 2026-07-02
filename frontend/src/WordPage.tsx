@@ -7,53 +7,43 @@ import { AnswerControls } from "./components/AnswerControls";
 import { NormalCard } from "./components/NormalCard";
 import { NormalImageCard } from "./components/NormalImageCard";
 import { ReverseCard } from "./components/ReverseCard";
-import { popUpIntervals, type ChallengeMode } from "./const";
+import { popUpIntervals, type ChallengeMode, type SrsDirection } from "./const";
 import { useAppStateContext, type Word } from "./provider";
-import { countCardsByCurrentCategory, dockeCounts } from "./utils";
+import { countCardsByCurrentCategory, dockeCounts, getSrsBranch, buildReviewItems, type ReviewItem } from "./utils";
 /** local replica of updateWordSrsData in gemini-dutch-practice\store\dictionarySlice.ts 
  * 
 */
 
 
-const CardComponent: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
-    const { config } = useAppStateContext();
-    const challengeMode = (config?.challengeMode || 'normal') as ChallengeMode;
-
+const CardComponent: React.FC<{ word: Word; direction: SrsDirection }> = ({ word, direction }) => {
     const renderedCard = useMemo(() => {
-        // 1. Determine if we should show reverse card
-        let showReverse = false;
-        if (challengeMode === 'reverse') {
-            showReverse = true;
-        } else if (challengeMode === 'mixed') {
-            showReverse = Math.random() > 0.5;
+        if (direction === 'reverse') {
+            return <ReverseCard activeCard={word} />;
         }
 
-        if (showReverse) {
-            return <ReverseCard activeCard={activeCard} />;
-        }
-
-        // 2. Determine if we show image variant
+        // Determine if we show image variant, based on the Direct SRS level
+        const directLevel = getSrsBranch(word, 'direct').srsLevel;
         let showImage = false;
-        if (activeCard.srsLevel > 5) {
+        if (directLevel > 5) {
             showImage = Math.random() > 0.3;
-        } else if (activeCard.srsLevel > 3) {
+        } else if (directLevel > 3) {
             showImage = Math.random() > 0.5;
         }
 
         if (showImage) {
-            return <NormalImageCard activeCard={activeCard} />;
+            return <NormalImageCard activeCard={word} />;
         }
 
-        return <NormalCard activeCard={activeCard} />;
-    }, [activeCard, challengeMode]);
+        return <NormalCard activeCard={word} />;
+    }, [word, direction]);
 
     return renderedCard;
 };
 
 
-const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
+const WordsCounter: React.FC<{ items: ReviewItem[] }> = ({ items }) => {
     const { practiceAll, selectedDeckId, setSelectedDeckId, decks ,flashcards} = useAppStateContext();
-    const cats = countCardsByCurrentCategory(cards);
+    const cats = countCardsByCurrentCategory(items);
         const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
         return (
         <div className="flex items-center gap-2">
@@ -76,15 +66,16 @@ const WordsCounter: React.FC<{ cards: Word[] }> = ({ cards }) => {
                 <span className="text-red-500 mr-1">{cats.again}</span>
                 <span className="text-orange-500 mr-1">{cats.hard}</span>
                 <span className="text-blue-500 mr-1">{cats.good}</span>
-                <span className="text-green-500">{cats.easy}</span> of {cards.length}
+                <span className="text-green-500">{cats.easy}</span> of {items.length}
             </span>
         </div>
     );
 };
 export const WordPage: React.FC = React.memo(() => {
 
-    const { flashcards, currentCardIndex, setCurrentCardIndex, isFlipped, setIsFlipped, selectedDeckId } = useAppStateContext();
+    const { flashcards, currentCardIndex, setCurrentCardIndex, isFlipped, setIsFlipped, selectedDeckId, config } = useAppStateContext();
     const { practiceAll, showToast } = useAppStateContext(); // Practice all words if none are due
+    const challengeMode = (config?.challengeMode || 'normal') as ChallengeMode;
 
     const deckCards = useMemo(() => {
         if (selectedDeckId === "all") {
@@ -98,20 +89,18 @@ export const WordPage: React.FC = React.memo(() => {
 
     // Filter due cards or provide practice stack
     const nowMs = Date.now()+ popUpIntervals[popUpIntervals.length - 1]*60*1000; // subtract max pop-up interval from current time to include cards that will be due very soon, providing a smoother experience and allowing users to pre-review cards that are just about to come up. This also helps prevent situations where a card becomes due in the middle of a review session and is not included in the stack, which can be jarring for users.
-    //dueCards ordered by nextReviewAt ascending, so the most urgent cards are first in the stack
-    const dueCards = useMemo(() => {
-        return deckCards
-            .filter(c => (c.nextReviewAt || 0) <= nowMs)
-            .sort((a, b) => (a.nextReviewAt || 0) - (b.nextReviewAt || 0));
-    }, [deckCards, nowMs]);
-    // console.log(`Total cards: ${flashcards.length}, Due cards: ${dueCards.length}, Practice all: ${practiceAll}`);
-    // const _tmp = flashcards.sort((a, b) => (a.nextReviewAt || 0) - (b.nextReviewAt || 0)).map(c => ({ dutch: c.dutch, srsLevel: c.srsLevel, nextReviewAt: new Date(c.nextReviewAt) })); 
-    // console.table(_tmp);
+    // reviewItems is direction-aware: each entry is a (word, direction) pairing. A word can appear
+    // twice (once per direction) in mixed challenge mode when both its Direct and Reverse tracks are due.
+    // In practiceAll mode all allowed directions for every word are included regardless of due-ness.
+    const reviewItems = useMemo(() => {
+        return buildReviewItems(deckCards, challengeMode, !practiceAll, nowMs);
+    }, [deckCards, challengeMode, practiceAll, nowMs]);
+    // console.log(`Total cards: ${flashcards.length}, Review items: ${reviewItems.length}, Practice all: ${practiceAll}`);
 
-    // flashcards are shuffled randomly on load, so the dueCards order is randomized so when in practiceAll mode they are not in the same order every time
-    const activeCards = (practiceAll ? deckCards : dueCards)
-    //Due to SRS rescheduling in normal mode we show first _scheduled_ card, but in practiceAll mode we show first _random_ card, so we need to slice the array accordingly
-    const activeCard = (practiceAll ? activeCards[currentCardIndex] : activeCards[0]) || null;
+    // flashcards are shuffled randomly on load, so the reviewItems order is randomized so when in practiceAll mode they are not in the same order every time
+    const activeItems = reviewItems;
+    //Due to SRS rescheduling in normal mode we show first _scheduled_ item, but in practiceAll mode we show first _random_ item, so we need to slice the array accordingly
+    const activeItem = (practiceAll ? activeItems[currentCardIndex] : activeItems[0]) || null;
     useEffect(() => {
         const handeFlip = async (e: React.KeyboardEvent) => {
 
@@ -128,11 +117,11 @@ export const WordPage: React.FC = React.memo(() => {
     }, [ setIsFlipped]);
 
     const handleSkipWord = useCallback(() => {
-        if (!activeCard) return;
+        if (!activeItem) return;
 
         setIsFlipped(false);
         setTimeout(() => {
-            if (currentCardIndex + 1 >= activeCards.length) {
+            if (currentCardIndex + 1 >= activeItems.length) {
                 showToast("Review session completed.", "success");
                 setTimeout(() => {
                     HideWindow();
@@ -142,15 +131,15 @@ export const WordPage: React.FC = React.memo(() => {
                 setCurrentCardIndex(currentCardIndex + 1);
             }
         }, 200);
-    }, [activeCard, currentCardIndex, activeCards, showToast]);
+    }, [activeItem, currentCardIndex, activeItems, showToast]);
 
     return (
         <div className="layout-page-stack">
             {/* Top Bar with selector and words counter. Always visible! */}
             <div className="layout-topbar">
-                <WordsCounter cards={activeCards} />
+                <WordsCounter items={activeItems} />
 
-                {practiceAll && activeCards.length > 0 && currentCardIndex < activeCards.length && (
+                {practiceAll && activeItems.length > 0 && currentCardIndex < activeItems.length && (
                     <button
                         onClick={handleSkipWord}
                         className="flex items-center gap-1 py-1 px-2.5 bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/30 hover:border-slate-700/60 text-slate-400 hover:text-slate-200 font-bold rounded-lg transition-all duration-150 cursor-pointer active:scale-95"
@@ -162,10 +151,10 @@ export const WordPage: React.FC = React.memo(() => {
                 )}
             </div>
 
-            {activeCards.length === 0 ? (
+            {activeItems.length === 0 ? (
                 /* All caught up state */
                 <AllCatchUp totalCards={deckCards.length} />
-            ) : currentCardIndex >= activeCards.length ? (
+            ) : currentCardIndex >= activeItems.length ? (
                 /* Review stack finished screen */
                 <AllCardsDone />
             ) : (
@@ -173,19 +162,19 @@ export const WordPage: React.FC = React.memo(() => {
                 <div className="layout-card-stage">
                     {/* Slick 3D perspective wrapper with key for mounting animations */}
                     <div
-                        key={activeCard.id}
+                        key={`${activeItem.word.id}-${activeItem.direction}`}
                         className="perspective w-full h-full cursor-pointer mt-1"
                         onClick={() => setIsFlipped(!isFlipped)}
                     >
-                        {/* <div className="select-text">{activeCard.id}</div> */}
-                        <CardComponent activeCard={activeCard} />
+                        {/* <div className="select-text">{activeItem.word.id}</div> */}
+                        <CardComponent word={activeItem.word} direction={activeItem.direction} />
                     </div>
 
                     {/* Grading / Answer Controls Footer */}
                     <div className="layout-card-footer">
                         {!isFlipped ? null : (
                             /* Premium HSL-Themed SRS Grading Buttons */
-                            <AnswerControls activeCard={activeCard} totalCards={activeCards.length} />
+                            <AnswerControls activeCard={activeItem.word} direction={activeItem.direction} totalCards={activeItems.length} />
                         )}
                     </div>
                 </div>
