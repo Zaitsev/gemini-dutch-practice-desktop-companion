@@ -18,6 +18,7 @@ export namespace main {
 	    dndDurationMinutes: number;
 	    autoHideAfterCards: number;
 	    challengeMode: string;
+	    idleFlashMinutes: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -42,6 +43,7 @@ export namespace main {
 	        this.dndDurationMinutes = source["dndDurationMinutes"];
 	        this.autoHideAfterCards = source["autoHideAfterCards"];
 	        this.challengeMode = source["challengeMode"];
+	        this.idleFlashMinutes = source["idleFlashMinutes"];
 	    }
 	}
 	export class Deck {

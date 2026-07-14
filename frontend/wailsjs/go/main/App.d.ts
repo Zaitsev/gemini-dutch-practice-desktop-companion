@@ -36,6 +36,8 @@ export function ResetReviewTimer():Promise<void>;
 
 export function SaveAutoHideAfterCards(arg1:number):Promise<boolean>;
 
+export function SaveIdleFlashMinutes(arg1:number):Promise<boolean>;
+
 export function SaveInterval(arg1:number):Promise<boolean>;
 
 export function SaveWindowState():Promise<void>;

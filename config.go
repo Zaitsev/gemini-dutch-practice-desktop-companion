@@ -24,6 +24,17 @@ type Config struct {
 	DndDurationMinutes  int    `json:"dndDurationMinutes"`
 	AutoHideAfterCards  int    `json:"autoHideAfterCards"`
 	ChallengeMode       string `json:"challengeMode"` // "normal", "reverse", "mixed"
+	IdleFlashMinutes    float64 `json:"idleFlashMinutes"`
+}
+
+func normalizeIdleFlashMinutes(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 10 {
+		return 10
+	}
+	return value
 }
 
 func normalizeAutoHideAfterCards(value int) int {
@@ -68,6 +79,7 @@ func LoadConfig() (*Config, error) {
 			IntervalMinutes:    60,
 			ChallengeMode:      "normal",
 			AutoHideAfterCards: 1,
+			IdleFlashMinutes:   2,
 			UseEmulator:        false,
 		}, nil
 	}
@@ -81,6 +93,7 @@ func LoadConfig() (*Config, error) {
 		IntervalMinutes:    60,
 		ChallengeMode:      "normal",
 		AutoHideAfterCards: 1,
+		IdleFlashMinutes:   2,
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, err
@@ -105,6 +118,7 @@ func LoadConfig() (*Config, error) {
 		config.IntervalMinutes = 60
 	}
 	config.AutoHideAfterCards = normalizeAutoHideAfterCards(config.AutoHideAfterCards)
+	config.IdleFlashMinutes = normalizeIdleFlashMinutes(config.IdleFlashMinutes)
 
 	return &config, nil
 }

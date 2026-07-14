@@ -11,6 +11,19 @@
     @apply h-14 flex items-center justify-between px-4 border-b border-slate-800/40 bg-slate-950/20 backdrop-blur-md relative z-40;
   }
 
+  .layout-app-header--glowing {
+    animation: glow-pulse 20s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%   { background-color: transparent; }
+    3%  { background-color: rgba(241, 26, 198,   0.7); }
+    8%  { background-color: transparent; }
+    13%  { background-color: rgba(241, 26, 198,   0.7); }
+    18%  { background-color: transparent; }
+    100% { background-color: transparent; }
+  }
+
   .layout-main-content {
     @apply flex-1 px-4 py-4 flex flex-col justify-start;
   }

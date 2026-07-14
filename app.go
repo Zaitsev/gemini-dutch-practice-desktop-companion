@@ -146,6 +146,20 @@ func (a *App) SaveAutoHideAfterCards(autoHideAfterCards int) bool {
 	return true
 }
 
+// SaveIdleFlashMinutes updates and saves the idle flash interval in minutes.
+// Value must be in range 0..10 where 0 means disabled.
+func (a *App) SaveIdleFlashMinutes(minutes float64) bool {
+	a.configLock.Lock()
+	a.config.IdleFlashMinutes = normalizeIdleFlashMinutes(minutes)
+	if err := a.config.Save(); err != nil {
+		runtime.LogErrorf(a.ctx, "[Config] Error saving idleFlashMinutes: %v", err)
+		a.configLock.Unlock()
+		return false
+	}
+	a.configLock.Unlock()
+	return true
+}
+
 // GetLaunchAtLoginStatus returns the live OS startup registration state.
 func (a *App) GetLaunchAtLoginStatus() (bool, error) {
 	enabled, err := IsLaunchAtLoginEnabled()

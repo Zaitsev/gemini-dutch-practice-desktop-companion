@@ -8,6 +8,7 @@ import {
     RenameDeck,
     SaveInterval,
     SaveAutoHideAfterCards,
+    SaveIdleFlashMinutes,
     SetLaunchAtLogin,
     SetMChallengeMode,
 } from "../wailsjs/go/main/App";
@@ -241,6 +242,25 @@ export function SettingsPage() {
         }
     }, [setConfig, showToast]);
 
+    const handleUpdateIdleFlashMinutes = useCallback(async (minutes: number) => {
+        try {
+            const success = await SaveIdleFlashMinutes(minutes);
+            if (success) {
+                setConfig((prev) => prev ? { ...prev, idleFlashMinutes: minutes } : null);
+                if (minutes === 0) {
+                    showToast("Idle alert disabled.", "success");
+                } else {
+                    showToast(`Idle alert set to ${minutes} minute${minutes === 1 ? "" : "s"}.`, "success");
+                }
+                return;
+            }
+            showToast("Failed to update idle alert setting.", "error");
+        } catch (error) {
+            console.error("Error updating idle alert setting:", error);
+            showToast("Error updating idle alert setting.", "error");
+        }
+    }, [setConfig, showToast]);
+
     const profileInitials = getProfileInitials(config?.displayName, config?.email);
     const customDecks = decks.filter((deck) => deck.id !== DEFAULT_DECK_ID);
 
@@ -414,6 +434,29 @@ export function SettingsPage() {
 
 
 
+                </div>
+                <div className="layout-settings-section">
+                    <div className="layout-settings-header">
+                        <Bell className="layout-settings-icon text-sky-400" />
+                        <h3 className="layout-settings-title-compact">Idle Alert</h3>
+                        <select
+                            value={config?.idleFlashMinutes ?? 2}
+                            onChange={(event) => {
+                                const value = Number(event.target.value);
+                                void handleUpdateIdleFlashMinutes(value);
+                            }}
+                            className="rounded-lg bg-slate-900/70 border border-slate-700/70 px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60"
+                            aria-label="Choose idle alert interval"
+                        >
+                            <option value={0}>Off</option>
+                            {[0.17, 1, 2, 3, 5].map((mins) => (
+                                <option key={mins} value={mins}>{mins < 1 ? '10s' : `${mins}m`}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <p className="layout-settings-help-compact">
+                        Flash the title bar when the app is idle to catch your attention.
+                    </p>
                 </div>
                 <div className="layout-settings-section">
                     <div className="layout-settings-header">

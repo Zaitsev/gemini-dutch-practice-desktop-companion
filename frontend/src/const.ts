@@ -18,6 +18,7 @@ export interface Config {
     useEmulator: boolean;
     autoHideAfterCards: number;
     challengeMode: string;
+    idleFlashMinutes: number;
 }
 export const APP_VERSION = version;
 export const popUpIntervals = [15, 30, 60, 120]; // in minutes, for each rating category (again, hard, good, easy)

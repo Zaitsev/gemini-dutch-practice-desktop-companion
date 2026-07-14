@@ -7,7 +7,7 @@ import {
   TimerOff,
   X
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   ClearDnd,
   GetDndStatus,
@@ -248,6 +248,40 @@ function App() {
     };
   }, [dndMenuOpen]);
 
+  const lastActivityTime = useRef(Date.now());
+  const [isGlowing, setIsGlowing] = useState(false);
+
+  const resetIdleTimer = useCallback(() => {
+    lastActivityTime.current = Date.now();
+    setIsGlowing(false);
+  }, []);
+
+  useEffect(() => {
+    const idleMinutes = config?.idleFlashMinutes ?? 2;
+    if (idleMinutes <= 0) {
+      return;
+    }
+
+    const idleThresholdMs = idleMinutes * 60 * 1000;
+
+    const handleMouseDown = () => {
+      resetIdleTimer();
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivityTime.current >= idleThresholdMs) {
+        setIsGlowing(true);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      clearInterval(interval);
+    };
+  }, [config?.idleFlashMinutes, resetIdleTimer]);
+
   // const loadCards = async (currentConfig: Config) => {
   //   setLoading(true);
   //   try {
@@ -301,7 +335,7 @@ function App() {
       <Toast />
 
       {/* Modern Custom Drag Bar Header */}
-      <header className="layout-app-header" style={{ ['--wails-draggable' as any]: 'drag' }}>
+      <header className={`layout-app-header ${isGlowing ? 'layout-app-header--glowing' : ''}`} style={{ ['--wails-draggable' as any]: 'drag' }}>
         <div className="flex items-center gap-2">
           <img src={logoSvg} alt="TaalGem Logo" className="w-7 h-7 object-contain drop-shadow" />
           <span className="font-bold text-sm bg-gradient-to-r from-sky-400 to-indigo-300 bg-clip-text text-transparent">TaalGem Companion</span>

@@ -70,6 +70,10 @@ export function SaveAutoHideAfterCards(arg1) {
   return window['go']['main']['App']['SaveAutoHideAfterCards'](arg1);
 }
 
+export function SaveIdleFlashMinutes(arg1) {
+  return window['go']['main']['App']['SaveIdleFlashMinutes'](arg1);
+}
+
 export function SaveInterval(arg1) {
   return window['go']['main']['App']['SaveInterval'](arg1);
 }
