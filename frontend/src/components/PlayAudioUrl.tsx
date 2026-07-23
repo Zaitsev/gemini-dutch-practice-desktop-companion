@@ -1,7 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Word } from "../provider";
-import { Cloud, Volume2 } from "lucide-react";
+import { Cloud, TriangleAlert, Volume2 } from "lucide-react";
 
+const checkDutchVoiceAvailable = (): boolean => {
+    if (!('speechSynthesis' in window)) return false;
+    const voices = window.speechSynthesis.getVoices();
+    return voices.some(v => v.lang.toLowerCase().startsWith('nl'));
+};
 
 const playBrowserTTS = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -26,7 +31,23 @@ const playBrowserTTS = (text: string) => {
     }
 };
 export const PlayAudioUrl: React.FC<{ activeCard: Word }> = ({ activeCard }) => {
+    const [dutchTtsAvailable, setDutchTtsAvailable] = useState<boolean>(() => checkDutchVoiceAvailable());
 
+    useEffect(() => {
+        // Re-check immediately (voices may already be loaded on re-render)
+        setDutchTtsAvailable(checkDutchVoiceAvailable());
+
+        if (!('speechSynthesis' in window)) return;
+
+        // Voices load asynchronously in Chromium/WebView2; listen for the event
+        const onVoicesChanged = () => {
+            setDutchTtsAvailable(checkDutchVoiceAvailable());
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+        return () => {
+            window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+        };
+    }, []);
 
     const playTTS = useCallback((e: React.MouseEvent | null, text: string, audioUrl?: string) => {
         if (e) {
@@ -42,6 +63,10 @@ export const PlayAudioUrl: React.FC<{ activeCard: Word }> = ({ activeCard }) => 
             playBrowserTTS(text);
         }
     }, []);
+
+    // Show a warning badge when there is no cloud audio and no Dutch TTS voice on this system
+    const showTtsWarning = !activeCard.wordAudioUrl && !dutchTtsAvailable;
+
     return (<>
         <button
             onClick={(e) => {
@@ -58,6 +83,14 @@ export const PlayAudioUrl: React.FC<{ activeCard: Word }> = ({ activeCard }) => 
                 title="Audio saved in the cloud"
             >
                 <Cloud className="w-2.5 h-2.5" />
+            </span>
+        )}
+        {showTtsWarning && (
+            <span
+                className="absolute -top-1 -right-1 flex h-4.5 w-4.5 pointer-events-none items-center justify-center bg-[#0b0f19] rounded-full border border-red-500/40 text-red-500 p-0.5"
+                title="Dutch language not installed on this system. Install a Dutch (nl-NL) language pack to enable pronunciation."
+            >
+                <TriangleAlert className="w-2.5 h-2.5" />
             </span>
         )}
     </>
