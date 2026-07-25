@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"net/http"
@@ -69,7 +70,7 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 		if errStr != "" {
 			authChan <- AuthResult{Error: errStr}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Write([]byte(`<html><body style="font-family: sans-serif; text-align: center; margin-top: 100px; background-color: #1a1a2e; color: #ff5555;"><h2>Authentication Failed</h2><p>` + errStr + `</p></body></html>`))
+			w.Write([]byte(`<html><body style="font-family: sans-serif; text-align: center; margin-top: 100px; background-color: #1a1a2e; color: #ff5555;"><h2>Authentication Failed</h2><p>` + html.EscapeString(errStr) + `</p></body></html>`))
 			return
 		}
 
