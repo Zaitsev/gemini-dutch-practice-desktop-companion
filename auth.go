@@ -153,22 +153,23 @@ var trustedPhotoHosts = []string{
 	"google.com",
 }
 
-// isAllowedPhotoURL returns true when u is an https URL whose host is within trustedPhotoHosts.
-func isAllowedPhotoURL(rawURL string) bool {
+// isAllowedPhotoURL parses rawURL and returns the parsed URL when it is an https URL
+// whose host is within trustedPhotoHosts, or nil otherwise.
+func isAllowedPhotoURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return false
+		return nil
 	}
 	if u.Scheme != "https" {
-		return false
+		return nil
 	}
 	host := strings.ToLower(u.Hostname())
 	for _, trusted := range trustedPhotoHosts {
 		if host == trusted || strings.HasSuffix(host, "."+trusted) {
-			return true
+			return u
 		}
 	}
-	return false
+	return nil
 }
 
 // downloadAndEncodeImage downloads a remote image and returns it as a base64 data URL
@@ -177,12 +178,9 @@ func downloadAndEncodeImage(photoURL string) string {
 		return ""
 	}
 
-	if !isAllowedPhotoURL(photoURL) {
-		if u, err := url.Parse(photoURL); err == nil {
-			fmt.Printf("[Auth] Refusing to fetch image from untrusted host: %s\n", u.Hostname())
-		} else {
-			fmt.Printf("[Auth] Refusing to fetch image from invalid URL\n")
-		}
+	parsed := isAllowedPhotoURL(photoURL)
+	if parsed == nil {
+		fmt.Printf("[Auth] Refusing to fetch image from untrusted or invalid URL\n")
 		return ""
 	}
 
