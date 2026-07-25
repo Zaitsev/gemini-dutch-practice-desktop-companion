@@ -26,7 +26,7 @@ type Deck struct {
 }
 
 type DictionaryWordState struct {
-	SrsLevel    int64    `json:"srsLevel"`
+	SrsLevel    int      `json:"srsLevel"`
 	NextReviewAt int64   `json:"nextReviewAt"`
 	DeckIds     []string `json:"deckIds"`
 	SRSLevels           SRSLevels              `json:"srsLevels,omitempty"`
@@ -205,9 +205,9 @@ func normalizeDictionaryData(data DictionaryState) (DictionaryState, bool) {
 		// srsLevel/nextReviewAt fields the first time this word is read. Legacy fields are left
 		// untouched (frozen historical snapshot) and never written to again after this point.
 		if !wordState.HasSRSLevels {
-			wordState.SRSLevels.Direct.SrsLevel = int(wordState.SrsLevel)
+			wordState.SRSLevels.Direct.SrsLevel = wordState.SrsLevel
 			wordState.SRSLevels.Direct.NextReviewAt = wordState.NextReviewAt
-			wordState.SRSLevels.Reverse.SrsLevel = int(wordState.SrsLevel) / 2
+			wordState.SRSLevels.Reverse.SrsLevel = wordState.SrsLevel / 2
 			wordState.SRSLevels.Reverse.NextReviewAt = 0
 			wordState.HasSRSLevels = true
 			changed = true
@@ -287,7 +287,7 @@ func encodeDictionaryData(data DictionaryState) map[string]interface{} {
 		wordFields[wordID] = map[string]interface{}{
 			"mapValue": map[string]interface{}{
 				"fields": map[string]interface{}{
-					"srsLevel": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.SrsLevel, 10)},
+					"srsLevel": map[string]interface{}{"integerValue": strconv.Itoa(wordState.SrsLevel)},
 					"nextReviewAt": map[string]interface{}{"integerValue": strconv.FormatInt(wordState.NextReviewAt, 10)},
 					"deckIds": map[string]interface{}{
 						"arrayValue": map[string]interface{}{"values": deckIds},
@@ -392,7 +392,7 @@ func parseDictionaryData(response map[string]interface{}) DictionaryState {
 					wordState := DictionaryWordState{}
 					if srsLevelObj, ok := wordFieldsMap["srsLevel"].(map[string]interface{}); ok {
 						if srsLevelStr, ok := srsLevelObj["integerValue"].(string); ok {
-							wordState.SrsLevel, _ = strconv.ParseInt(srsLevelStr, 10, 64)
+							wordState.SrsLevel, _ = strconv.Atoi(srsLevelStr)
 						}
 					}
 
