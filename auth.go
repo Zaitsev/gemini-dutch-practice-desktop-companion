@@ -151,6 +151,8 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 var trustedPhotoHosts = []string{
 	"googleusercontent.com",
 	"google.com",
+	"googleapis.com",
+	"cloudfunctions.net",
 }
 
 // isAllowedPhotoURL parses rawURL and returns the parsed URL when it is an https URL
