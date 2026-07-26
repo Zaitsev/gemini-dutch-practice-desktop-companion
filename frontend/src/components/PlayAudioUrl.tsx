@@ -82,7 +82,7 @@ export const PlayAudioUrl: React.FC<{ activeCard: Word }> = ({ activeCard }) => 
                 className="absolute -top-1 -right-1 flex h-4.5 w-4.5 pointer-events-none items-center justify-center bg-[#0b0f19] rounded-full border border-sky-500/30 text-sky-400 p-0.5 animate-pulse"
                 title="Audio saved in the cloud"
             >
-                <Cloud className="w-2.5 h-2.5" />
+                <Cloud className="w-2.5 h-2.5" fill="currentColor" />
             </span>
         )}
         {showTtsWarning && (
