@@ -8,6 +8,8 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,9 +146,43 @@ func StartAuthServer(useEmulator bool, emulatorHost string) (AuthResult, error) 
 	return finalResult, nil
 }
 
+// trustedPhotoHosts is the allowlist of domains from which profile photos may be fetched.
+// Google OAuth profile photos are always served from googleusercontent.com or google.com.
+var trustedPhotoHosts = []string{
+	"googleusercontent.com",
+	"google.com",
+	"googleapis.com",
+	"cloudfunctions.net",
+}
+
+// isAllowedPhotoURL parses rawURL and returns the parsed URL when it is an https URL
+// whose host is within trustedPhotoHosts, or nil otherwise.
+func isAllowedPhotoURL(rawURL string) *url.URL {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil
+	}
+	if u.Scheme != "https" {
+		return nil
+	}
+	host := strings.ToLower(u.Hostname())
+	for _, trusted := range trustedPhotoHosts {
+		if host == trusted || strings.HasSuffix(host, "."+trusted) {
+			return u
+		}
+	}
+	return nil
+}
+
 // downloadAndEncodeImage downloads a remote image and returns it as a base64 data URL
 func downloadAndEncodeImage(photoURL string) string {
 	if photoURL == "" {
+		return ""
+	}
+
+	parsed := isAllowedPhotoURL(photoURL)
+	if parsed == nil {
+		fmt.Printf("[Auth] Refusing to fetch image from untrusted or invalid URL\n")
 		return ""
 	}
 
