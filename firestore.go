@@ -231,11 +231,18 @@ func normalizeDictionaryData(data DictionaryState) (DictionaryState, bool) {
 			seen[deckID] = struct{}{}
 			normalizedDeckIds = append(normalizedDeckIds, deckID)
 		}
+		if _, hasDefault := seen[defaultDeckID]; hasDefault && len(normalizedDeckIds) > 1 {
+			filtered := make([]string, 0, len(normalizedDeckIds)-1)
+			for _, id := range normalizedDeckIds {
+				if id != defaultDeckID {
+					filtered = append(filtered, id)
+				}
+			}
+			normalizedDeckIds = filtered
+			changed = true
+		}
 		if len(normalizedDeckIds) == 0 {
 			normalizedDeckIds = []string{defaultDeckID}
-			changed = true
-		} else if _, exists := seen[defaultDeckID]; !exists {
-			normalizedDeckIds = append([]string{defaultDeckID}, normalizedDeckIds...)
 			changed = true
 		}
 		wordState.DeckIds = normalizedDeckIds
@@ -697,8 +704,6 @@ func (fc *FirestoreClient) SetWordDeckIds(wordID string, deckIds []string) error
 	}
 	if len(cleanedIDs) == 0 {
 		cleanedIDs = []string{defaultDeckID}
-	} else if _, exists := seen[defaultDeckID]; !exists {
-		cleanedIDs = append([]string{defaultDeckID}, cleanedIDs...)
 	}
 
 	// Surgical PATCH — only update words.<wordID>.deckIds, leave SRS fields untouched.

@@ -22,7 +22,7 @@ export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCa
         const nextCustomDeckIds = withoutDefault.includes(deck.id)
             ? withoutDefault.filter((deckId) => deckId !== deck.id)
             : [...withoutDefault, deck.id];
-        const nextDeckIds = [DEFAULT_DECK_ID, ...nextCustomDeckIds];
+        const nextDeckIds = nextCustomDeckIds.length > 0 ? nextCustomDeckIds : [DEFAULT_DECK_ID];
 
         try {
             const success = await SetWordDeckIds(activeCard.id, nextDeckIds);
@@ -52,12 +52,14 @@ export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCa
     }
     const deckCounts = useMemo(() => dockeCounts(flashcards), [flashcards]);
 
+    const hasCustomDeck = customDecks.some((deck) => assignedDeckIds.includes(deck.id));
+
     return (
         <>
             <div className="flex items-center justify-between gap-3 cursor-pointer text-xs ">
-                {assignedDeckIds.length === 1 && (
-                    <span className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full  border  border-sky-500/30 text-sky-500">
-                         <Check className="w-3 h-3" />
+                {!hasCustomDeck && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-sky-500/30 text-sky-500">
+                        <Check className="w-3 h-3" />
                         {DEFAULT_DECK_LABEL} {deckCounts[DEFAULT_DECK_ID] > 0 ? `| ${deckCounts[DEFAULT_DECK_ID]}` : null}
                     </span>
                 )}
@@ -75,8 +77,6 @@ export const WordDeckBadges: React.FC<{ activeCard: Word | null }> = ({ activeCa
                         </span>
                     );
                 })}
-
-
             </div>
         </>
     );
